@@ -23,7 +23,15 @@ export const cut = async function(data) {
 
 export const unpackWorker = {
   worker: new Worker(),
-  async unpack(data) {
+  merge(data) {
     this.worker.postMessage({ fn: 'merge', data })
+  },
+  async unpack(data) {
+    this.worker.postMessage({ fn: 'unpack', data })
+    return new Promise(resolve => {
+      this.worker.onmessage = function({ data }) {
+        resolve(data)
+      }
+    }) 
   }
 }

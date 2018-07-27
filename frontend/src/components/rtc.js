@@ -1,10 +1,9 @@
 import { EventEmitter } from '@/tools'
-import  '@/workers/datachannel'
+import { pack, cut, unpackWorker } from '@/workers/datachannel'
 
 export default class extends EventEmitter {
   emitQueue = []
   cutData = {}
-  cutIndex = 0
   constructor({ config }) {
     // 传递事件
     super()
@@ -133,49 +132,11 @@ export default class extends EventEmitter {
    *
    * @param {[string, [Blob, Object, arraybuffer]]}
    * @returns {Promise}
-   * 加套接字，第一层：0///,表示之前的buffer需要转换字符串
-   * 切片，第二层：buffer,allByteLength
-   * resove([buffer, buffer])
+   * @resove([buffer, buffer])
    */
   async pack(data) {
-    data = data.map((it, index) => {
-      if (typeof it === 'string') {
-        return this.reader(new Blob([it, '0///']))
-      }
-
-      if (it instanceof Blob) {
-        return this.reader(new Blob([it, '3///']))
-      }
-
-      if (it instanceof ArrayBuffer) {
-        return new Uint8Array([...new Uint8Array(it), 50, 47, 47, 47])
-      }
-
-      return this.reader(new Blob([JSON.stringify(it), '1///']))
-    })
-    const res = await Promise.all(data)
-
-    // 切片
-    const allBuffer = Uint8Array.from(
-      res.reduce((old, nw) => [...new Uint8Array(old), ...new Uint8Array(nw)])
-    )
-
-    let chunk = 1024 * 60 // 最大为65536 byte 合64k,这儿选择60k
-    const byteLength = allBuffer.byteLength
-    let buffers = []
-    const cutIndex = this.cutIndex++
-    for (let start = 0; start < byteLength; start += chunk) {
-      const end = Math.min(start + chunk, byteLength)
-      let perfile = allBuffer.subarray(start, end)
-      if (end !== byteLength) {
-        perfile = await this.reader(new Blob([cutIndex, ',', perfile]))
-      } else {
-        perfile = await this.reader(new Blob([cutIndex, '.,', perfile]))
-      }
-      buffers.push(new Uint8Array(perfile))
-    }
-
-    return buffers
+    data = await pack(data)
+    return cut(data)
   }
 
   /**
@@ -185,55 +146,20 @@ export default class extends EventEmitter {
 
   async unpack(data) {
     data = new Uint8Array(data)
+    const idx = data.findIndex(it => it === 44)
 
-    // 解切片
-    const idx = data.findIndex(it => it === 44),
-      cutIndex = [...data.subarray(0, idx)]
-        .map(it => String.fromCharCode(it))
-        .join('')
-        .replace('.', '')
-
-    const fragment = new Uint8Array(data.subarray(idx + 1))
-
-    if (!this.cutData[cutIndex]) {
-      this.cutData[cutIndex] = fragment
-    } else {
-      this.cutData[cutIndex] = new Uint8Array([
-        ...this.cutData[cutIndex],
-        ...fragment
-      ])
-    }
-
+    unpackWorker.merge(data)
     if (data[idx - 1] !== 46) {
       return false
     }
-
-    data = this.cutData[cutIndex]
-    delete this.cutData[cutIndex]
-
-    // 解套接字
-    let result = []
-    let start = 0
-    data.forEach((it, index) => {
-      if (
-        index < 4 ||
-        !(
-          [48, 49, 50, 51].includes(data[index - 3]) &&
-          data[index - 1] === 47 &&
-          data[index - 2] === 47 &&
-          it === 47
-        )
-      ) {
-        return false
+    const mergeResult = await new Promise(resolve => {
+      unpackWorker.worker.onmessage = function() {
+        resolve(data)
       }
-
-      const buffer = data.subarray(start, index - 3)
-      start = index + 1
-
-      result.push(this.perUnpack(data[index - 3], buffer))
     })
-
-    return Promise.all(result)
+    console.log('mergeresult', mergeResult)
+    const unpackResult = await unpackWorker.unpack(mergeResult)
+    console.log(unpackResult)
   }
 
   perUnpack(type, data) {

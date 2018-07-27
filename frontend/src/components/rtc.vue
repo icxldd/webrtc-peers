@@ -145,10 +145,7 @@ export default {
       for (let start = 0; start < file.size; start += chunk) {
         const end = Math.min(start + chunk, file.size)
         const perfile = file.slice(start, end)
-        const realfile = await fileReader({data:perfile,type:'arrayBuffer'})
-        console.log(realfile)
-        rtcManager.peers[0].dc.send(realfile)
-        // rtcManager.emit('chat-file', info.hash, perfile)
+        rtcManager.emit('chat-file', info.hash, perfile)
         // await new Promise(setTimeout)
       }
       console.timeEnd('slice')

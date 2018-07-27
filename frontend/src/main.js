@@ -9,8 +9,7 @@ import './style/init.scss'
 
 Vue.use(elementUi).use(plugin)
 Vue.config.productionTip = false
-
-const aa = new Vue({
+ new Vue({
   el: '#app',
   router,
   ...App

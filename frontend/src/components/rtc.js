@@ -1,4 +1,5 @@
 import { EventEmitter } from '@/tools'
+import  '@/workers/datachannel'
 
 export default class extends EventEmitter {
   emitQueue = []
@@ -104,13 +105,8 @@ export default class extends EventEmitter {
     const sendData = this.pack(data)
     // 消息队列
     this.emitQueue.push(sendData)
-
     // 没有数据，说明send循环已经结束，需重新启动。
-    if (
-      this.emitQueue.length === 1 &&
-      this.dc &&
-      this.dc.readyState === 'open'
-    ) {
+    if (!this.sendStart && this.dc && this.dc.readyState === 'open') {
       this.send()
     }
   }
@@ -119,11 +115,17 @@ export default class extends EventEmitter {
    * 消息队列函数，保证先emit，先发送数据
    */
   async send() {
+    if (!this.emitQueue.length) return
+    this.sendStart = true
     for (let i = 0; i < this.emitQueue.length; ) {
       const data = await this.emitQueue.shift()
+      console.log('send', data)
       data.forEach(it => {
         this.dc.send(it)
       })
+      if (!this.emitQueue.length) {
+        this.sendStart = false
+      }
     }
   }
 
@@ -132,7 +134,7 @@ export default class extends EventEmitter {
    * @param {[string, [Blob, Object, arraybuffer]]}
    * @returns {Promise}
    * 加套接字，第一层：0///,表示之前的buffer需要转换字符串
-   * 加套接字，第二层：buffer,allByteLength
+   * 切片，第二层：buffer,allByteLength
    * resove([buffer, buffer])
    */
   async pack(data) {

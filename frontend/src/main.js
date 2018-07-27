@@ -15,4 +15,4 @@ const aa = new Vue({
   router,
   ...App
 })
-console.log((window.aa = aa))
+

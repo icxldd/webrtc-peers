@@ -27,8 +27,8 @@
               <div v-else class="chat-file">
                 <i class="el-icon-document file-icon"></i>
                 <span class="file-name"> {{val.fileName}}</span>
-                <el-progress :percentage="Math.floor(val.getSize * 100 / val.size)" color="#8e71c7" v-show="val.getSize !== val.size"></el-progress>
-                <el-progress :percentage="100" color="#8e71c7" status="success" v-show="val.getSize === val.size"></el-progress>
+                <el-progress :percentage="Math.floor(val.getSize * 100 / val.size)" color="#8e71c7" v-if="!val.isSelf && val.getSize !== val.size"></el-progress>
+                <el-progress :percentage="100" color="#8e71c7" status="success" v-else></el-progress>
               </div>
             </div>
           </li>
@@ -54,12 +54,9 @@ import socket from '@/socket'
 
 import Chat from './chat'
 
-import Worker from '@/workers/aa.worker.js'
-const worker = new Worker()
-// worker.postMessage({gs: 'sdf'})
+
 const chat = new Chat()
 const rtcManager = new RTCManager()
-
 
 window.rtcManager = rtcManager
 
@@ -105,62 +102,56 @@ export default {
     },
 
     async addFile(file) {
-      const area = this.$refs.edit
+
       const type = file.type
       if (type.includes('image')) {
-        await chat.addImg(file, area)
+        await chat.addImg(file, this.area)
       } else if (['video/webm', 'video/ogg', 'video/mp4'].includes(type)) {
-        await chat.addVideo(file, area)
+        await chat.addVideo(file, this.area)
       } else {
-        await chat.addFile(file, area)
+        await chat.addFile(file, this.area)
       }
     },
 
     async fileChange(input) {
-      window.input = input
       const file = input.files[0]
       await this.addFile(file)
 
       input.value = ''
     },
 
-    sendText(text) {
+    async sendText(text) {
       if (!text) return
+      this.area.innerHTML = ''
       const sendData = {
         msg: text,
         user: socket.id,
         type: 'text'
       }
+
+      await this._getchatMsg({ ...sendData, isSelf: true })
+      
       rtcManager.emit('chat', sendData)
-
-      this._getchatMsg({ ...sendData, isSelf: true })
-      const area = document.querySelector('.chat-area')
-      area.innerHTML = ''
     },
-    _sendFile(data) {
+    async _sendFile(data) {
       const { file, ...info } = data
-
-      let chat
-      if (info.type === 'file') {
-        chat = this.chats.find(it => it.hash === info.hash)
-      }
-
+      await new Promise(this.$nextTick)
       if (info.type === 'video') {
         this._getChatFile(info.hash, file)
       }
-
       window.file = file
-
-      let chunk = 1024 * 32 // 最大为64*1024
+      console.time('slice')
+      let chunk = 1024 * 50 // 最大为64*1024
       for (let start = 0; start < file.size; start += chunk) {
         const end = Math.min(start + chunk, file.size)
         const perfile = file.slice(start, end)
-        if (chat) {
-          chat.getSize += perfile.size
-        }
-
-        rtcManager.emit('chat-file', info.hash, perfile)
+        const realfile = await fileReader({data:perfile,type:'arrayBuffer'})
+        console.log(realfile)
+        rtcManager.peers[0].dc.send(realfile)
+        // rtcManager.emit('chat-file', info.hash, perfile)
+        // await new Promise(setTimeout)
       }
+      console.timeEnd('slice')
     },
     async sendFiles(files) {
       files.forEach(it => {
@@ -171,22 +162,23 @@ export default {
           getSize: 0,
           user: socket.id
         })
-        this._getchatMsg({ ...it, size: file.size, getSize: 0, isSelf: true })
+        this._getchatMsg({ ...it, size: file.size, isSelf: true })
 
         this._sendFile(it)
       })
     },
 
-    send() {
-      const area = document.querySelector('.chat-area')
-      const { text, files } = chat.filter(area)
-      this.sendText(text)
+    async send() {
+
+      const { text, files } = chat.filter(this.area)
+      await this.sendText(text)
       this.sendFiles(files)
-      area.innerHTML = ''
+      this.area.innerHTML = ''
     },
 
     async _getChatFile(hash, data) {
       const chat = this.chats.find(it => it.hash === hash)
+      console.log(data,data.size)
       chat.getSize += data.size
       if (!chat.file) {
         chat.file = ''
@@ -206,7 +198,7 @@ export default {
     async _getchatMsg(chat) {
       this.chats.push(chat)
       await new Promise(this.$nextTick)
-
+    
       if (chat.msg && chat.msg.includes('hash=')) {
         const hash = /hash="(.+?)"/g.exec(chat.msg)[1]
         const div = document.querySelector(`[hash="${hash}"]`)
@@ -224,7 +216,6 @@ export default {
     },
 
     _streamChange(value) {
-      window.streams = value
       this.streams = value
       this.isShowVideo = true
       this.refreshVideo()
@@ -240,6 +231,9 @@ export default {
       .on('chat', this._getchatMsg)
       .on('chat-file', this._getChatFile)
       .on('peers', this._peersChange)
+  },
+  mounted() {
+    this.area = this.$refs.edit
   }
 }
 </script>

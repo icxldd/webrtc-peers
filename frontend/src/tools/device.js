@@ -1,5 +1,5 @@
 const UA = navigator.userAgent.toLowerCase()
-console.log(1, 'self', self)
+
 /**
  * [isWeChat 微信]
  * @type {Boolean}

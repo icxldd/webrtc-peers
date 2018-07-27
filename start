@@ -1,0 +1,6 @@
+cd server 
+nodemon --inspect &
+
+
+cd ../frontend 
+npm run dev

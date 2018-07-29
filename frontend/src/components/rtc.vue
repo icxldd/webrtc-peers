@@ -144,18 +144,17 @@ export default {
       if (info.type === 'video') {
         this._getChatFile(info.hash, file)
       }
-
-      let chunk = 1024 * 32 // 最大为64*1024
-      for (let start = 0; start < file.size; start += chunk) {
-        const end = Math.min(start + chunk, file.size)
-        const perfile = file.slice(start, end)
-        if (chat) {
-          chat.getSize += perfile.size
-        }
-
-        rtcManager.emit('chat-file', info.hash, perfile)
-        await new Promise(window.setTimeout)
-      }
+      rtcManager.emit('chat-file', info.hash, file)
+      // let chunk = 1024 * 32 // 最大为64*1024
+      // for (let start = 0; start < file.size; start += chunk) {
+      //   const end = Math.min(start + chunk, file.size)
+      //   const perfile = file.slice(start, end)
+      //   if (chat) {
+      //     chat.getSize += perfile.size
+      //   }
+      //   rtcManager.emit('chat-file', info.hash, perfile)
+      //   await new Promise(window.setTimeout)
+      // }
     },
     async sendFiles(files) {
       files.forEach(it => {

@@ -1,7 +1,7 @@
 const cutData = {}
 
 onmessage = async function({ data: { data, fn } }) {
-  workerFn[fn]
+
   data = await workerFn[fn](data)
   self.postMessage(data)
 }
@@ -59,9 +59,9 @@ const workerFn = {
     return buffers
   },
 
-  // 解切片
+  // 合切片
   async merge(data) {
-    console.log('merge', data)
+
     data = new Uint8Array(data)
 
     const idx = data.findIndex(it => it === 44),
@@ -81,18 +81,23 @@ const workerFn = {
     if (data[idx - 1] !== 46) {
       return false
     }
+    let resultData = cutData[cutIndex]
     delete cutData[cutIndex]
-
-    self.postMessage(cutData[cutIndex])
+    return resultData
   },
 
   /**
    * 按照套接字解包,只对emit('aaa', 'xx', {}, arraybuffer)解包,不对对象的某个属性是blob这种格式解包.
    * @returns {[promise]}
    */
+  aa: 0,
 
   async unpack(data) {
     // 解套接字
+    // console.log('unpackStart', data)
+    const a  = this.aa
+    aa++
+    console.log('start', a, data)
     let result = []
     let start = 0
     data.forEach((it, index) => {
@@ -113,16 +118,17 @@ const workerFn = {
 
       result.push(this.perUnpack(data[index - 3], buffer))
     })
-
+    console.log('end', a, result)
+    // console.log('result-pre', result)
     return Promise.all(result)
   },
 
   perUnpack(type, data) {
     if (type === 48) {
-      return reader(new Blob([data]), 'readAsText')
+      return this.reader(new Blob([data]), 'readAsText')
     }
     if (type === 49) {
-      return reader(new Blob([data]), 'readAsText').then(res => JSON.parse(res))
+      return this.reader(new Blob([data]), 'readAsText').then(res => JSON.parse(res))
     }
     if (type === 50) {
       return data

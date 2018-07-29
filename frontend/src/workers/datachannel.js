@@ -30,8 +30,9 @@ export const unpackWorker = {
     this.worker.postMessage({ fn: 'unpack', data })
     return new Promise(resolve => {
       this.worker.onmessage = function({ data }) {
+        console.log('onmessage', data)
         resolve(data)
       }
-    }) 
+    })
   }
 }

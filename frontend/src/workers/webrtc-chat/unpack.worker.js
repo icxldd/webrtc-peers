@@ -50,9 +50,9 @@ async function unpack(data) {
       index < 4 ||
       !(
         [1, 2, 3, 4, 5, 6].includes(data[index - 3]) &&
-        data[index - 1] === 5 &&
-        data[index - 2] === 5 &&
-        it === 5
+        data[index - 1] === 10 &&
+        data[index - 2] === 10 &&
+        it === 10
       )
     ) {
       return false
@@ -83,9 +83,9 @@ function perUnpack(type, data) {
   }
 
   if (type === 5) {// number
-    return reader(new Blob([data], 'readAsText')).then(res => +res)
+    return reader(new Blob([data]), 'readAsText').then(res => +res)
   }
-  
+
   if (type === 6) { // object
     return reader(new Blob([data]), 'readAsText').then(res => JSON.parse(res))
   }

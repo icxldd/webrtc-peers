@@ -7,26 +7,26 @@ onmessage = async function ({ data }) {
 async function pack(data) {
   data = data.map(it => {
     if (typeof it === 'string') {
-      return reader(new Blob([it, new Uint8Array([1, 5, 5, 5])]))
+      return reader(new Blob([it, new Uint8Array([1, 10, 10, 10])]))
     }
 
     if (it instanceof Blob) {
-      return reader(new Blob([it, new Uint8Array([2, 5, 5, 5])]))
+      return reader(new Blob([it, new Uint8Array([2, 10, 10, 10])]))
     }
 
     if (it instanceof ArrayBuffer) {
-      return new Uint8Array([...new Uint8Array(it), 3, 5, 5, 5])
+      return new Uint8Array([...new Uint8Array(it), 3, 10, 10, 10])
     }
 
     if (typeof it === 'boolean') {
-      return new Uint8Array([it, 4, 5, 5, 5])
+      return new Uint8Array([it, 4, 10, 10, 10])
     }
 
     if (typeof it === 'number') {
-      return reader(new Blob([it, new Uint8Array([5, 5, 5, 5])]))
+      return reader(new Blob([it, new Uint8Array([5, 10, 10, 10])]))
     }
 
-    return reader(new Blob([JSON.stringify(it), new Uint8Array([6, 5, 5, 5])]))
+    return reader(new Blob([JSON.stringify(it), new Uint8Array([6, 10, 10, 10])]))
   })
   return Promise.all(data)
 }

@@ -1,29 +1,29 @@
 <template>
   <div :class="['web-rtc', {'rtc-mobile': isMobile}]">
     <Rooms @create-room="start" @show-video="isShowVideo = true" @call="call"></Rooms>
-    <transition name="play">  
+    <transition name="play">
       <div class="play" v-show="isShowVideo">
         <nav v-if="isMobile">
-          <div class="back" @click="isShowVideo=false" >&lt; 返回房间</div>
-          <div class="back" @click="isShowChat=!isShowChat" >&#8593; 聊天</div>
+          <div class="back" @click="isShowVideo=false">&lt; 返回房间</div>
+          <div class="back" @click="isShowChat=!isShowChat">&#8593; 聊天</div>
         </nav>
         <div v-for="(stream, index) in streams" :key="index">
           <video ref="video" class="video-js rtc-video" id="video-js" data-setup="{}" controls autoplay></video>
         </div>
       </div>
-    </transition>  
+    </transition>
     <transition name="chat">
-      
-      <div  class="chat" v-show="peersLength && (isShowChat || !isMobile)"> 
-        <nav  v-if="isMobile ">
-          <div class="back" @click="isShowChat=false" >&#8595; 聊天</div>
+
+      <div class="chat" v-show="peersLength && (isShowChat || !isMobile)">
+        <nav v-if="isMobile ">
+          <div class="back" @click="isShowChat=false">&#8595; 聊天</div>
         </nav>
         <ul class="content" ref="chat">
           <li :class="{'is-self':val.isSelf}" v-for="(val,index) in chats" :key="index">
             <div class="user">{{val.isSelf ? '我': val.user}}</div>
             <div class="msg-content">
               <span class="msg" v-html="val.msg" v-if="val.type==='text'"></span>
-              <video v-else-if="val.type === 'video'" class="video-js" id="video-js" :hash="val.hash" data-setup="{}"   controls></video>
+              <video v-else-if="val.type === 'video'" class="video-js" id="video-js" :hash="val.hash" data-setup="{}" controls></video>
               <div v-else class="chat-file">
                 <i class="el-icon-document file-icon"></i>
                 <span class="file-name"> {{val.fileName}}</span>
@@ -36,7 +36,7 @@
         <div class="chat-content">
           <img src="~assets/folder.svg" class="file" alt="选取文件">
           <input type="file" class="input-file" @change="fileChange($event.target)">
-          <div class="chat-area" ref="edit" contenteditable="true"  @drop.stop.prevent="drop"></div>
+          <div class="chat-area" ref="edit" contenteditable="true" @drop.stop.prevent="drop"></div>
           <div class="button-div">
             <button @click="send">发送</button>
           </div>
@@ -53,13 +53,9 @@ import { isMobile, fileReader, fileLoad } from '@/tools'
 import socket from '@/socket'
 
 import Chat from './chat'
-
-import Worker from '@/workers/aa.worker.js'
-const worker = new Worker()
 // worker.postMessage({gs: 'sdf'})
 const chat = new Chat()
 const rtcManager = new RTCManager()
-
 
 window.rtcManager = rtcManager
 
@@ -137,7 +133,7 @@ export default {
       const area = document.querySelector('.chat-area')
       area.innerHTML = ''
     },
-    _sendFile(data) {
+    async _sendFile(data) {
       const { file, ...info } = data
 
       let chat
@@ -149,8 +145,6 @@ export default {
         this._getChatFile(info.hash, file)
       }
 
-      window.file = file
-
       let chunk = 1024 * 32 // 最大为64*1024
       for (let start = 0; start < file.size; start += chunk) {
         const end = Math.min(start + chunk, file.size)
@@ -160,6 +154,7 @@ export default {
         }
 
         rtcManager.emit('chat-file', info.hash, perfile)
+        await new Promise(window.setTimeout)
       }
     },
     async sendFiles(files) {

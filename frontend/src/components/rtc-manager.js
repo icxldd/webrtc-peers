@@ -7,11 +7,6 @@ window.socket = socket
 const iceConfig = {
   iceServers: [
     { urls: ['stun:stun.freeswitch.org', 'stun:stun.ekiga.net'] },
-    // {
-    //   urls: 'turn:numb.viagenie.ca',
-    //   credential: 'g468291375',
-    //   username: '605661239@qq.com'
-    // },
     {
       urls: 'turn:gusheng123.top:3478',
       credential: 'g468291375',

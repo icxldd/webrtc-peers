@@ -18,21 +18,11 @@ export default class WebRtcChat {
   }
 
   async onPackWorkerMessage(data) {
-
     this.sendQueue.push(data)
-    if (this.sendQueue.length !== 1) {
-      return
-    }
-
-    for (let i = 0; i < this.sendQueue.length;) {
-      let aa = this.sendQueue.shift()
-      console.log(aa)
-      this.dc.send(aa)
-      await new Promise(res => setTimeout(res))
-    }
-
-
+    this._send()
   }
+
+
 
   onUnpackWorkerMessage(data) {
     if (this.onmessage) {
@@ -45,6 +35,16 @@ export default class WebRtcChat {
       throw new Error('datachannel readyState is not open')
     }
     this.packWorker.postMessage(data)
+  }
+
+  async _send() {
+    if (this._sendStart) return
+    this._sendStart = true
+    for (let i = 0; i < this.sendQueue.length;) {
+      this.dc.send(this.sendQueue.shift())
+      await new Promise(setTimeout)
+    }
+    this._sendStart = false
   }
 
 }

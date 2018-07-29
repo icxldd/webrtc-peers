@@ -12,13 +12,13 @@ const unpack = {
         .replace('.', '')
 
     const fragment = new Uint8Array(data.subarray(idx + 1))
-
+   
     if (!cutData[cutIndex]) {
       cutData[cutIndex] = fragment
     } else {
       cutData[cutIndex] = new Uint8Array([...cutData[cutIndex], ...fragment])
     }
-
+    console.log('merge', cutData[cutIndex])
     if (data[idx - 1] !== 46) {
       return false
     }
@@ -64,6 +64,7 @@ async function _unpack(data) {
   if (unpack.onmessage) {
     unpack.onmessage(unpackData)
   }
+  console.log('unpackdata', unpackData)
 
 }
 
@@ -84,7 +85,7 @@ function perUnpack(type, data) {
   if (type === 5) {// number
 
     return reader(new Blob([data]), 'readAsText').then(res => {
-      console.log(res)
+
       return +res
     })
 

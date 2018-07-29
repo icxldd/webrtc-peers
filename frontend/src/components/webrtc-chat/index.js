@@ -36,20 +36,23 @@ export default class WebRtcChat {
       throw new Error('datachannel readyState is not open')
     }
 
-    if (this.sendQueue.length !== 1) {
-      return
-    }
     this._send()
   }
   async _send() {
-    console.log(this.a++)
+    if (this._sendStart) {
+      return
+    }
+
+    this._sendStart = true
     for (let i = 0; i < this.sendQueue.length;) {
       const data = await this.sendQueue.shift()
+
       for (let j = 0; j < data.length; j++) {
         this.dc.send(data[j])
-        await new Promise(r => window.setTimeout(r,1))
+        await new Promise(window.setTimeout)
       }
     }
+    this._sendStart = false
   }
 
 }

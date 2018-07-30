@@ -1,29 +1,29 @@
 <template>
   <div :class="['web-rtc', {'rtc-mobile': isMobile}]">
     <Rooms @create-room="start" @show-video="isShowVideo = true" @call="call"></Rooms>
-    <transition name="play">  
+    <transition name="play">
       <div class="play" v-show="isShowVideo">
         <nav v-if="isMobile">
-          <div class="back" @click="isShowVideo=false" >&lt; 返回房间</div>
-          <div class="back" @click="isShowChat=!isShowChat" >&#8593; 聊天</div>
+          <div class="back" @click="isShowVideo=false">&lt; 返回房间</div>
+          <div class="back" @click="isShowChat=!isShowChat">&#8593; 聊天</div>
         </nav>
         <div v-for="(stream, index) in streams" :key="index">
           <video ref="video" class="video-js rtc-video" id="video-js" data-setup="{}" controls autoplay></video>
         </div>
       </div>
-    </transition>  
+    </transition>
     <transition name="chat">
-      
-      <div  class="chat" v-show="peersLength && (isShowChat || !isMobile)"> 
-        <nav  v-if="isMobile ">
-          <div class="back" @click="isShowChat=false" >&#8595; 聊天</div>
+
+      <div class="chat" v-show="peersLength && (isShowChat || !isMobile)">
+        <nav v-if="isMobile ">
+          <div class="back" @click="isShowChat=false">&#8595; 聊天</div>
         </nav>
         <ul class="content" ref="chat">
           <li :class="{'is-self':val.isSelf}" v-for="(val,index) in chats" :key="index">
             <div class="user">{{val.isSelf ? '我': val.user}}</div>
             <div class="msg-content">
               <span class="msg" v-html="val.msg" v-if="val.type==='text'"></span>
-              <video v-else-if="val.type === 'video'" class="video-js" id="video-js" :hash="val.hash" data-setup="{}"   controls></video>
+              <video v-else-if="val.type === 'video'" class="video-js" id="video-js" :hash="val.hash" data-setup="{}" controls></video>
               <div v-else class="chat-file">
                 <i class="el-icon-document file-icon"></i>
                 <span class="file-name"> {{val.fileName}}</span>
@@ -36,7 +36,7 @@
         <div class="chat-content">
           <img src="~assets/folder.svg" class="file" alt="选取文件">
           <input type="file" class="input-file" @change="fileChange($event.target)">
-          <div class="chat-area" ref="edit" contenteditable="true"  @drop.stop.prevent="drop"></div>
+          <div class="chat-area" ref="edit" contenteditable="true" @drop.stop.prevent="drop"></div>
           <div class="button-div">
             <button @click="send">发送</button>
           </div>
@@ -53,7 +53,6 @@ import { isMobile, fileReader, fileLoad } from '@/tools'
 import socket from '@/socket'
 
 import Chat from './chat'
-
 
 const chat = new Chat()
 const rtcManager = new RTCManager()
@@ -102,7 +101,6 @@ export default {
     },
 
     async addFile(file) {
-
       const type = file.type
       if (type.includes('image')) {
         await chat.addImg(file, this.area)
@@ -130,7 +128,7 @@ export default {
       }
 
       await this._getchatMsg({ ...sendData, isSelf: true })
-      
+
       rtcManager.emit('chat', sendData)
     },
     async _sendFile(data) {
@@ -139,16 +137,14 @@ export default {
       if (info.type === 'video') {
         this._getChatFile(info.hash, file)
       }
-      window.file = file
-      console.time('slice')
+      
       let chunk = 1024 * 50 // 最大为64*1024
       for (let start = 0; start < file.size; start += chunk) {
         const end = Math.min(start + chunk, file.size)
         const perfile = file.slice(start, end)
         rtcManager.emit('chat-file', info.hash, perfile)
-        // await new Promise(setTimeout)
+        await new Promise(setTimeout)
       }
-      console.timeEnd('slice')
     },
     async sendFiles(files) {
       files.forEach(it => {
@@ -166,7 +162,6 @@ export default {
     },
 
     async send() {
-
       const { text, files } = chat.filter(this.area)
       await this.sendText(text)
       this.sendFiles(files)
@@ -175,7 +170,7 @@ export default {
 
     async _getChatFile(hash, data) {
       const chat = this.chats.find(it => it.hash === hash)
-      console.log(data,data.size)
+      console.log(data, data.size)
       chat.getSize += data.size
       if (!chat.file) {
         chat.file = ''
@@ -195,7 +190,7 @@ export default {
     async _getchatMsg(chat) {
       this.chats.push(chat)
       await new Promise(this.$nextTick)
-    
+
       if (chat.msg && chat.msg.includes('hash=')) {
         const hash = /hash="(.+?)"/g.exec(chat.msg)[1]
         const div = document.querySelector(`[hash="${hash}"]`)

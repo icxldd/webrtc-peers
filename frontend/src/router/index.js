@@ -7,10 +7,9 @@ export default new Router({
   mode:'history',
   routes: [
     {
-      path: '/',
+      path: '/webrtc',
       name: 'webrtc',
       component: _ => import('@/components/rtc.vue')
-      // component: Webrtc
     }
   ]
 })

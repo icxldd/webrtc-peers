@@ -36,7 +36,7 @@ export default class extends EventEmitter {
     this.roomid = data.roomid
   }
 
-  createRTC({ toSocketId, rtcid }) {
+  createRTC({ toSocketId, rtcid, roomid }) {
     const peer = new WebRtc({ config: iceConfig })
     peer.id = rtcid
     this.peers.push(peer)
@@ -49,7 +49,12 @@ export default class extends EventEmitter {
     this.dealLeave(peer)
     peer.toSocketId = toSocketId
     peer.on('message', msg => this.onmessage(msg))
-
+    
+    peer.pc.addEventListener('iceconnectionstatechange', event => {
+      console.log(peer.pc.iceConnectionState)
+      this.onStateChange({ peer, roomid })
+    })
+    
     return peer
   }
 
@@ -63,23 +68,14 @@ export default class extends EventEmitter {
         rtcid: data.rtcid
       })
     )
-    peer.pc.addEventListener('iceconnectionstatechange', event => {
-      console.log(peer.pc.iceConnectionState)
-      this.onStateChange({ peer, event })
-    })
   }
 
   _call(toid, roomid) {
-    const peer = this.createRTC({ rtcid: uuid(), toSocketId: toid })
-
+    const peer = this.createRTC({ rtcid: uuid(), toSocketId: toid, roomid })
     peer.createOffer().then(offer => {
       socket.emit('offer', { offer, from: socket.id, to: toid, rtcid: peer.id })
     })
 
-    peer.pc.addEventListener('iceconnectionstatechange', event => {
-      console.log(peer.pc.iceConnectionState)
-      this.onStateChange({ peer, event, roomid })
-    })
   }
 
   async call(picked) {

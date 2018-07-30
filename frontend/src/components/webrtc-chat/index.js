@@ -1,6 +1,6 @@
 import pack from './pack.js'
 import unpack from './unpack.js'
-console.log(pack, unpack)
+
 export default class WebRtcChat {
   sendQueue = []
   constructor(dc) {

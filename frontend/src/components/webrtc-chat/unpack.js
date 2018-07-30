@@ -18,7 +18,7 @@ const unpack = {
     } else {
       cutData[cutIndex] = new Uint8Array([...cutData[cutIndex], ...fragment])
     }
-    console.log('merge', cutData[cutIndex])
+
     if (data[idx - 1] !== 46) {
       return false
     }
@@ -64,7 +64,6 @@ async function _unpack(data) {
   if (unpack.onmessage) {
     unpack.onmessage(unpackData)
   }
-  console.log('unpackdata', unpackData)
 
 }
 

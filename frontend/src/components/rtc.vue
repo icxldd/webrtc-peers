@@ -144,7 +144,7 @@ export default {
       if (info.type === 'video') {
         this._getChatFile(info.hash, file)
       }
-    
+      const peers = [...rtcManager.peers]
       let chunk = 1024 * 32 // 最大为64*1024
       for (let start = 0; start < file.size; start += chunk) {
         const end = Math.min(start + chunk, file.size)
@@ -152,7 +152,10 @@ export default {
         if (chat) {
           chat.getSize += perfile.size
         }
-        rtcManager.emit('chat-file', info.hash, perfile)
+        peers.forEach(it => {
+          it.emit('chat-file', info.hash, perfile)
+        })
+        // rtcManager.emit('chat-file', info.hash, perfile)
         await new Promise(window.setTimeout)
       }
     },

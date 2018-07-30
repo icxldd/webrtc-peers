@@ -6,13 +6,13 @@ import router from './router'
 import elementUi from 'element-ui'
 import plugin from './plugin'
 import './style/init.scss'
+import 'video.js'
 
 Vue.use(elementUi).use(plugin)
 Vue.config.productionTip = false
 
-const aa = new Vue({
+new Vue({
   el: '#app',
   router,
   ...App
 })
-console.log((window.aa = aa))

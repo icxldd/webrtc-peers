@@ -25,7 +25,7 @@ export default class WebRtcChat {
     }
   }
 
-  async send(...data) {
+  send(...data) {
     if (typeof data[0] !== 'string') {
       throw new Error('emit key must be String')
     }

@@ -1,21 +1,17 @@
-import Worker from '@/workers/file-reader.worker.js'
-console.log(Worker)
-// const worker = new Worker()
-// console.log(worker)
+
 onmessage = async function ({ data }) {
   const packData = await pack(data)
   cut(packData)
 }
 
-
 async function pack(data) {
   data = data.map(it => {
     if (typeof it === 'string') {
-      return read(new Blob([it, new Uint8Array([1, 10, 10, 10])]), 'arrayBuffer')
+      return read(new Blob([it, new Uint8Array([1, 10, 10, 10])]))
     }
 
     if (it instanceof Blob) {
-      return read(new Blob([it, new Uint8Array([2, 10, 10, 10])]), 'arrayBuffer')
+      return read(new Blob([it, new Uint8Array([2, 10, 10, 10])]))
     }
 
     if (it instanceof ArrayBuffer) {
@@ -27,10 +23,10 @@ async function pack(data) {
     }
 
     if (typeof it === 'number') {
-      return read(new Blob([it, new Uint8Array([5, 10, 10, 10])]), 'arrayBuffer')
+      return read(new Blob([it, new Uint8Array([5, 10, 10, 10])]))
     }
 
-    return read(new Blob([JSON.stringify(it), new Uint8Array([6, 10, 10, 10])]), 'arrayBuffer')
+    return read(new Blob([JSON.stringify(it), new Uint8Array([6, 10, 10, 10])]))
   })
   return Promise.all(data)
 }
@@ -56,16 +52,16 @@ async function cut(data) {
   }
 }
 
-// function read(data, resultType = 'readAsArrayBuffer') {
-//   const read = new FileReader()
+function read(data, resultType = 'readAsArrayBuffer') {
+  const reader = new FileReader()
 
-//   return new Promise((resolve, reject) => {
-//     read[resultType](data)
-//     read.onload = e => {
-//       resolve(e.target.result)
-//     }
-//     read.onerror = e => {
-//       reject(e)
-//     }
-//   })
-// }
+  return new Promise((resolve, reject) => {
+    reader[resultType](data)
+    reader.onload = e => {
+      resolve(e.target.result)
+    }
+    reader.onerror = e => {
+      reject(e)
+    }
+  })
+}

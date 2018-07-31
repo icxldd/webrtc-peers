@@ -47,6 +47,7 @@
 </template>
 
 <script>
+
 import Rooms from './rooms'
 import RTCManager from './rtc-manager'
 import { isMobile, fileReader, fileLoad } from '@/tools'
@@ -113,7 +114,6 @@ export default {
     },
 
     async fileChange(input) {
-      window.input = input
       const file = input.files[0]
       await this.addFile(file)
 
@@ -218,7 +218,6 @@ export default {
     },
 
     _streamChange(value) {
-      window.streams = value
       this.streams = value
       this.isShowVideo = true
       this.refreshVideo()

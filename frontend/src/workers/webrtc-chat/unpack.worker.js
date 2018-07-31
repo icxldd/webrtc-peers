@@ -1,7 +1,6 @@
 const cutData = {}
 
 
-
 self.onmessage = async function (e) {
   merge(e.data)
 }

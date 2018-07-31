@@ -80,7 +80,6 @@ export default class extends EventEmitter {
   }
 
   async incomingMessage(data) {
-    console.log('mseeage', data)
     this.emitLocal(...data)
     this.emitLocal('message', data)
   }

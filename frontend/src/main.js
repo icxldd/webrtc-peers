@@ -6,10 +6,13 @@ import router from './router'
 import elementUi from 'element-ui'
 import plugin from './plugin'
 import './style/init.scss'
+import 'video.js'
+import 'webrtc-adapter'
+
 
 Vue.use(elementUi).use(plugin)
 Vue.config.productionTip = false
- new Vue({
+new Vue({
   el: '#app',
   router,
   ...App

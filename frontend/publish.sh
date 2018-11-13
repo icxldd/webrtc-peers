@@ -11,7 +11,7 @@ echo '2、代码上传'
 git add .
 git commit -m '发布代码'
 git push
-message='cd /root/app/backend && git pull && pm2 restart all'
+message='cd /root/app/backend/webrtc && git pull && pm2 restart all'
 echo '执行远程命令：' $message
 
 ssh root@gusheng123.top $message

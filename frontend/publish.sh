@@ -1,4 +1,10 @@
- 
+a=`git status -s`
+if [ !a ];then
+  a='xxx'
+fi
+echo $a 
+
+
 read -p '确认发布后端代码输入ok: ' t
 if [ $t != 'ok' ]
 then

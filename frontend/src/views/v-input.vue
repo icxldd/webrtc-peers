@@ -1,6 +1,12 @@
 <template>
   <div :class="['v-input', {error}]">
-    <input v-bind="$attrs" :value="value" @input="e => $emit('input', e.target.value)" @focus="$emit('update:error', '')" :class="{error}">
+    <input
+      v-bind="$attrs"
+      :value="value"
+      @input="e => $emit('input', e.target.value)"
+      @focus="$emit('update:error', '')"
+      :class="{error}"
+    />
     <span class="err-tips">{{error}}</span>
   </div>
 </template>

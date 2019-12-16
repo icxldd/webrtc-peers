@@ -71,6 +71,7 @@ export default class extends EventEmitter {
   }
 
   async emit(...data) {
+    
     if (!data.length) return
     this.chat.send(...data)
   }

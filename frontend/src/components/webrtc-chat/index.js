@@ -48,8 +48,9 @@ export default class WebRtcChat {
       const data = await this.sendQueue.shift()
 
       for (let j = 0; j < data.length; j++) {
+        console.log(data[j])
         this.dc.send(data[j])
-        await new Promise(window.setTimeout)
+        await ''
       }
     }
     this._sendStart = false

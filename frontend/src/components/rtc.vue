@@ -27,8 +27,8 @@
               <div v-else class="chat-file">
                 <i class="el-icon-document file-icon"></i>
                 <span class="file-name"> {{val.fileName}}</span>
-                <el-progress :percentage="Math.floor(val.getSize * 100 / val.size)" color="#8e71c7" v-show="val.getSize !== val.size"></el-progress>
-                <el-progress :percentage="100" color="#8e71c7" status="success" v-show="val.getSize === val.size"></el-progress>
+                <el-progress :percentage="Math.floor(val.getSize * 100 / val.size)" color="#8e71c7" v-if="val.getSize !== val.size"></el-progress>
+                <el-progress :percentage="100" color="#8e71c7" status="success" v-else></el-progress>
               </div>
             </div>
           </li>
@@ -149,14 +149,16 @@ export default {
       for (let start = 0; start < file.size; start += chunk) {
         const end = Math.min(start + chunk, file.size)
         const perfile = file.slice(start, end)
+       
         if (chat) {
+         
           chat.getSize += perfile.size
         }
         peers.forEach(it => {
           it.emit('chat-file', info.hash, perfile)
         })
         // rtcManager.emit('chat-file', info.hash, perfile)
-        await new Promise(window.setTimeout)
+        await ''
       }
     },
     async sendFiles(files) {
@@ -188,8 +190,8 @@ export default {
       if (!chat.file) {
         chat.file = ''
       }
-
       chat.file = new Blob([chat.file, data])
+       
       if (chat.getSize !== chat.size) return
       if (chat.type === 'file') {
         return fileLoad({ data: chat.file, name: chat.fileName })

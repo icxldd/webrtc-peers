@@ -1,5 +1,5 @@
 import { EventEmitter } from '@/tools'
-import WebRtcChat from './webrtc-chat'
+import WebRtcChat from './datachannel-transform'
 
 
 export default class extends EventEmitter {

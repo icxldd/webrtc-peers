@@ -182,7 +182,6 @@ export default {
 		},
 
 		async _getChatFile(hash, data) {
-      console.log('get', data,hash)
 			const chat = this.chats.find(it => it.hash === hash)
 			chat.getSize += data.size
 			if (!chat.file) {

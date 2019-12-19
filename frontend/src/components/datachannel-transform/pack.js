@@ -1,12 +1,14 @@
-import { setHeader, randomStr, getByte } from './tool'
+import { setHeader, randomStr, getByte, mergeBuffer } from './tool'
 /**
  *
  * @param {Array} data
- * @returns {Array[{index,buffer}]}
+ * @packedData {buffer, index, messageId}
  */
 export default async function pack(data) {
   const messageId = randomStr()
+  console.log('asdf')
   data = await Promise.all(data.map(getByte))
+
   const argsTypes = data.map(it => it.type)
   const argsLens = data.map(it => it.buffer.byteLength)
 
@@ -15,8 +17,6 @@ export default async function pack(data) {
   let index = 0
 
   const chunkLen = 1024 * 16
-
-  const cutData = { messageId }
 
   while (blob.size) {
     let header
@@ -44,10 +44,9 @@ export default async function pack(data) {
 
     let freeLen = chunkLen - headerBuffer.byteLength
     let contentBuffer = blob.slice(0, freeLen)
-    cutData[index] = await new Blob([headerBuffer, contentBuffer]).arrayBuffer()
+    const buffer = await new Blob([headerBuffer, contentBuffer]).arrayBuffer()
+    pack.onmessage(buffer, index, messageId, header.fin)
     blob = blob.slice(freeLen)
     index++
   }
-
-  return cutData
 }

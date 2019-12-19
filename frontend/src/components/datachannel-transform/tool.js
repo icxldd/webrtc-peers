@@ -81,3 +81,17 @@ export const getByte = async function(it) {
     buffer
   }
 }
+
+export const mergeBuffer= function(...datas) {
+  let len = 0
+  for(let it of datas) {
+    len += it.byteLength 
+  }
+  let result = new Uint8Array(len)
+  let offset = 0
+  for(let it of datas) {
+    result.set(it, offset)
+    offset += it.byteLength
+  }
+  return result
+}

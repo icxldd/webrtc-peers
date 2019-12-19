@@ -4,9 +4,8 @@ import { setHeader, randomStr, getByte, mergeBuffer } from './tool'
  * @param {Array} data
  * @packedData {buffer, index, messageId}
  */
-export default async function pack(data) {
-  const messageId = randomStr()
-  console.log('asdf')
+export default async function pack(data,messageId) {
+
   data = await Promise.all(data.map(getByte))
 
   const argsTypes = data.map(it => it.type)

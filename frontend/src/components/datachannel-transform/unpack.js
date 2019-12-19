@@ -35,6 +35,7 @@ const unpack = async function(data) {
       notice({ type: 2, messageId, lack }, 5000)
     } else {
       const realData = await _unpack(messageId)
+      console.log('real', realData)
       unpack.onmessage(realData)
       notice({ type: 9, messageId })
       over(messageId)

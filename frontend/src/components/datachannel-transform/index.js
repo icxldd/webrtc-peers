@@ -1,41 +1,25 @@
 import pack from './pack.js'
 import unpack from './unpack.js'
-import { encode } from './tool'
-export default class WebRtcChat {
+import { encode, randomStr } from './tool'
+export default class DataTrans {
   sendQueue = []
   _backupObj = {}
-  constructor(dc) {
-    dc.binaryType = 'arraybuffer'
-    dc.addEventListener(
-      'message',
-      e => {
-        unpack(e.data)
-      },
-      false
-    )
-
-    unpack.onmessage = this._getUnpackData.bind(this)
+  _events = {}
+  constructor() {
+    unpack.onmessage = data => {
+      console.log('ove', data)
+      this.emit('unpackover', data)
+    }
     unpack.onnotice = this._notice.bind(this)
     unpack.onfeedback = this._feedback.bind(this)
-    
+
+    this.unpack = unpack
     pack.onmessage = this._getPackeddata.bind(this)
-    this.dc = dc
-    this.dealWithDc()
   }
-
-  dealWithDc() {
-    this.dc.onopen = async _ => {
-      await new Promise(resolve => {
-        const interval = setInterval(_ => {
-          if (this.dc.readyState === 'open') {
-            resolve()
-            clearInterval(interval)
-          }
-        }, 100)
-      })
-
-      this._send()
-    }
+  pack(val) {
+    const messageId = randomStr()
+    pack(val, messageId)
+    return messageId
   }
   /**
    *
@@ -45,7 +29,7 @@ export default class WebRtcChat {
   _notice(data) {
     const sendBuffer = encode(`%${JSON.stringify(data)}`)
     this.sendQueue.push(sendBuffer)
-    this._send()
+    this._packover()
   }
   /**
    * 通知信息的反馈
@@ -55,7 +39,7 @@ export default class WebRtcChat {
     if (!this._backupObj[messageId]) {
       return
     }
-    console.log('feed', messageId, type,lack)
+    console.log('feed', messageId, type, lack)
     if (type === 0) {
       clearInterval(this._backupObj[messageId].firstInterval)
     } else if (type === 1) {
@@ -74,9 +58,6 @@ export default class WebRtcChat {
       this.sendQueue.push(...needsend)
     }
   }
-  _getUnpackData(data) {
-    this.onmessage(data)
-  }
   _getPackeddata(buffer, index, messageId, fin) {
     this._backup(buffer, index, messageId)
 
@@ -89,7 +70,7 @@ export default class WebRtcChat {
       }
     } else {
       this.sendQueue.push(buffer)
-      this._send()
+      this._packover()
     }
   }
   _backup(buffer, index, messageId) {
@@ -98,31 +79,41 @@ export default class WebRtcChat {
     }
     this._backupObj[messageId].buffers[index] = buffer
   }
-  async send(...data) {
-    if (typeof data[0] !== 'string') {
-      throw new Error('emit key must be String')
-    }
-    pack(data)
-  }
-  async _send() {
-    if (this._sendStart || this.dc.readyState !== 'open') {
+  async _packover() {
+    if (this._sendStart) {
       return
     }
 
     this._sendStart = true
     for (let i = 0; i < this.sendQueue.length; ) {
       const data = await this.sendQueue.shift()
-      this.dc.send(data)
+      this.emit('packover', data)
     }
     this._sendStart = false
   }
   _sendUntilFeedBack(data) {
     this.sendQueue.unshift(data)
-    this._send()
+    this._packover()
 
     return setInterval(() => {
       this.sendQueue.unshift(data)
-      this._send()
+      this._packover()
     }, 5000)
+  }
+
+  emit(key, ...data) {
+    console.log(this, key,data, this._events[key])
+    if (this._events[key]) {
+      this._events[key].forEach(it => it(...data))
+    }
+    return this
+  }
+
+  on(key, fn) {
+    if (!this._events[key]) {
+      this._events[key] = []
+    }
+    this._events[key].push(fn)
+    return this
   }
 }

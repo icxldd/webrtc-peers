@@ -1,5 +1,5 @@
 import { EventEmitter } from '@/tools'
-import WebRtcChat from './datachannel-transform'
+import WebRTCChat from './webrtc-chart'
 
 
 export default class extends EventEmitter {
@@ -26,8 +26,8 @@ export default class extends EventEmitter {
       id: 123
     })
     this.dc.binaryType = 'arraybuffer'
-    this.chat = new WebRtcChat(this.dc)
-    this.chat.onmessage = data => this.incomingMessage(data)
+    this.chat = new WebRTCChat(this.dc)
+    this.chat.on('message', this.incomingMessage.bind(this))
   }
 
   /**
@@ -66,6 +66,7 @@ export default class extends EventEmitter {
   }
 
   async incomingMessage(data) {
+    console.log('this', this)
     this.emitLocal(...data)
     this.emitLocal('message', data)
   }

@@ -66,7 +66,7 @@ export const getByte = async function(it) {
   if (type === 'String') {
     buffer = encode(it)
   } else if (type === 'Blob') {
-    buffer = await it.arrayBuffer()
+    buffer = await reader.readAsArrayBuffer(it)
   } else if (type === 'ArrayBuffer') {
     buffer = it
   } else if (type === 'Boolean') {
@@ -74,7 +74,7 @@ export const getByte = async function(it) {
   } else if (type === 'Number') {
     buffer = encode(it)
   } else if (type === 'Object' || type === 'Array') {
-    buffer = await new Blob([JSON.stringify(it)]).arrayBuffer()
+    buffer = await reader.readAsArrayBuffer(new Blob([JSON.stringify(it)]))
   }
   return {
     type: types[type], // 转换成1，2，3等
@@ -82,16 +82,31 @@ export const getByte = async function(it) {
   }
 }
 
-export const mergeBuffer= function(...datas) {
+export const mergeBuffer = function(...datas) {
   let len = 0
-  for(let it of datas) {
-    len += it.byteLength 
+  for (let it of datas) {
+    len += it.byteLength
   }
   let result = new Uint8Array(len)
   let offset = 0
-  for(let it of datas) {
+  for (let it of datas) {
     result.set(it, offset)
     offset += it.byteLength
   }
   return result
 }
+
+export const reader = new Proxy(
+  {},
+  {
+    get(target, property) {
+      const reader = new FileReader()
+      return function(val) {
+        reader[property](val)
+        return new Promise(r => {
+          reader.onload = e => r(e.target.result)
+        })
+      }
+    }
+  }
+)

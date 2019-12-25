@@ -18,23 +18,26 @@ export default class WebRTCChart {
     this.trans
       .on('packover', this._beforeSend.bind(this))
       .on('unpackover', this.onmessage.bind(this))
-
-    this.dealWithDc()
+      .on('progress', this.progress.bind(this))
+    this.dc.onopen = async () => {
+      this._sendg = this._sendg || this._send()
+    }
+    this.dc.bufferedAmountLowThreshold = 1024 * 64
+    this.dc.onbufferedamountlow = () => {
+      console.log('low',this.dc.bufferedAmount)
+      this._sendg.next()
+    }
   }
   onmessage(val) {
     this.emit('message', val)
   }
   _beforeSend(data) {
     this.sendQueue.push(data)
-    this._send()
+    this._sendg = this._sendg || this._send()
+    this._sendg.next()
   }
-
-  dealWithDc() {
-    this.dc.onopen = async () => {
-      // this.dc.readyState === 'open'
-      console.log('type')
-      this._send()
-    }
+  progress(header) {
+    console.log('pheader',header)
   }
 
   async send(...data) {
@@ -44,25 +47,32 @@ export default class WebRTCChart {
 
     return this.trans.pack(data)
   }
-  async _send() {
-    if (this._sendStart || this.dc.readyState !== 'open') {
-      return
-    }
 
-    this._sendStart = true
-    for (let i = 0; i < this.sendQueue.length; ) {
-      const data = await this.sendQueue.shift()
-      this.dc.send(data)
+  *_send() {
+    while (true) {
+      if (this.dc.bufferedAmount > 1024 * 64 * 3 ) {
+        console.log('too large', this.dc.bufferedAmount)
+        yield
+        continue
+      }
+      if(!this.sendQueue.length) {
+        console.log('nodata',this.dc.bufferedAmount)
+        yield
+        continue
+      }
+
+      if (this.sendQueue.length) {
+        this.dc.send(this.sendQueue.shift())
+        console.log('send')
+      }
     }
-    this._sendStart = false
   }
   _sendUntilFeedBack(data) {
     this.sendQueue.unshift(data)
-    this._send()
-
+    this._sendg.next()
     return setInterval(() => {
       this.sendQueue.unshift(data)
-      this._send()
+      this._sendg.next()
     }, 5000)
   }
 

@@ -1,4 +1,4 @@
-import { setHeader, randomStr, getByte, mergeBuffer } from './tool'
+import { setHeader, getByte, mergeBuffer, reader } from './tool'
 /**
  *
  * @param {Array} data
@@ -15,7 +15,7 @@ export default async function pack(data,messageId) {
 
   let index = 0
 
-  const chunkLen = 1024 * 16
+  const chunkLen = 1024 * 64
 
   while (blob.size) {
     let header
@@ -43,7 +43,7 @@ export default async function pack(data,messageId) {
 
     let freeLen = chunkLen - headerBuffer.byteLength
     let contentBuffer = blob.slice(0, freeLen)
-    const buffer = await new Blob([headerBuffer, contentBuffer]).arrayBuffer()
+    const buffer = await reader.readAsArrayBuffer(new Blob([headerBuffer, contentBuffer]))
     pack.onmessage(buffer, index, messageId, header.fin)
     blob = blob.slice(freeLen)
     index++

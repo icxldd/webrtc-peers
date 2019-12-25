@@ -23,7 +23,8 @@ export default class extends EventEmitter {
 
     this.dc = this.pc.createDataChannel('channel', {
       negotiated: true,
-      id: 123
+      id: 123,
+      ordered : false,
     })
     this.dc.binaryType = 'arraybuffer'
     this.chat = new WebRTCChat(this.dc)

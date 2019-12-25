@@ -1,41 +1,42 @@
 const cutData = {}
-import { decode, parseFragment } from './tool'
+import { decode, parseFragment, reader } from './tool'
 
 const unpack = async function(data) {
-
   if (new Uint8Array(data, 0, 1)[0] === 37) {
     return unpack.onfeedback(JSON.parse(decode(data.slice(1))))
   }
   const { content, header } = parseFragment(data)
   let { messageId, index, fin } = header
-
-  if(cutData[messageId] === Symbol.for('over')) return
+  if (cutData[messageId] === Symbol.for('over')) return
 
   if (!cutData[messageId]) {
-    cutData[messageId] = { buffers: [] }
+    cutData[messageId] = { buffers: [], getByte: 0 }
   }
 
-  if (!index) {
-    // 切割的第一条数据
+  if (!index && !fin) {
+    // 切割的第一条数据，但不是最后一条
     index = 0
     notice({ type: 0, messageId })
-    Object.assign(cutData[messageId], header)
   }
-  cutData[messageId].buffers[index] = content
-  console.log('get', index, content.byteLength)
+  Object.assign(cutData[messageId], header)
+  if (!cutData[messageId].buffers[index]) {
+    cutData[messageId].buffers[index] = content
+    cutData[messageId].getByte += content.byteLength
+    unpack.onprogress(cutData[messageId])
+  }
+
   if (fin || cutData[messageId].fin) {
     // 补发或者最后一条数据
-    if (fin) {
-      notice({ type: 1, messageId })
-      cutData[messageId].fin = 1
-    }
+    cutData[messageId].fin = 1
     const lack = verifyLack(messageId, index)
     if (lack.length) {
       cutData[messageId].lack = lack
       notice({ type: 2, messageId, lack }, 5000)
+      if (fin) {
+        notice({ type: 1, messageId })
+      }
     } else {
       const realData = await _unpack(messageId)
-      console.log('real', realData)
       unpack.onmessage(realData)
       notice({ type: 9, messageId })
       over(messageId)
@@ -44,18 +45,18 @@ const unpack = async function(data) {
 }
 
 function notice(data, time) {
-  
-  if(!time) {
+  if (!time) {
     return unpack.onnotice(data)
   }
 
-
-  if(cutData[data.messageId].lackTimeout) {
+  if (cutData[data.messageId].lackTimeout) {
     clearTimeout(cutData[data.messageId].lackTimeout)
   }
 
-  cutData[data.messageId].lackTimeout = setTimeout(() => unpack.onnotice(data), time)
-
+  cutData[data.messageId].lackTimeout = setTimeout(
+    () => unpack.onnotice(data),
+    time
+  )
 }
 
 function over(messageId) {
@@ -105,7 +106,7 @@ function _unpack(messageId) {
 }
 
 async function _argsUnpack(type, data) {
-  data = await data.arrayBuffer()
+  data = await reader.readAsArrayBuffer(data)
   if (type === 1) {
     // string
     return decode(data)

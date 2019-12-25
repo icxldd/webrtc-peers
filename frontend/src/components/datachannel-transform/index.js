@@ -7,11 +7,13 @@ export default class DataTrans {
   _events = {}
   constructor() {
     unpack.onmessage = data => {
-      console.log('ove', data)
+      console.log('over', data)
       this.emit('unpackover', data)
     }
     unpack.onnotice = this._notice.bind(this)
     unpack.onfeedback = this._feedback.bind(this)
+    unpack.onunpackprogress = this._onunpackprogress.bind(this)
+    unpack.onprogress = this._onpackprogress.bind(this)
 
     this.unpack = unpack
     pack.onmessage = this._getPackeddata.bind(this)
@@ -58,6 +60,12 @@ export default class DataTrans {
       this.sendQueue.push(...needsend)
     }
   }
+  _onpackprogress(header) {
+    this.emit('progress', header)
+  }
+  _onunpackprogress(header) {
+    this.emit('progress', header)
+  }
   _getPackeddata(buffer, index, messageId, fin) {
     this._backup(buffer, index, messageId)
 
@@ -102,7 +110,6 @@ export default class DataTrans {
   }
 
   emit(key, ...data) {
-    console.log(this, key,data, this._events[key])
     if (this._events[key]) {
       this._events[key].forEach(it => it(...data))
     }

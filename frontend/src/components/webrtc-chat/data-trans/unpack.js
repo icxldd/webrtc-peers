@@ -1,5 +1,5 @@
 const cutData = {}
-import { decode, parseFragment, reader } from './tool'
+import { decode, parseFragment, reader } from '../tool'
 
 const unpack = async function(data) {
   if (new Uint8Array(data, 0, 1)[0] === 37) {
@@ -12,6 +12,7 @@ const unpack = async function(data) {
   if (!cutData[messageId]) {
     cutData[messageId] = { buffers: [], getByte: 0 }
   }
+  
 
   if (!index && !fin) {
     // 切割的第一条数据，但不是最后一条

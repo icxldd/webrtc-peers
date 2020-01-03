@@ -1,11 +1,11 @@
-import { setHeader, getByte, mergeBuffer, reader } from './tool'
+import { setHeader, getByte, mergeBuffer, reader } from '../tool'
 /**
  *
  * @param {Array} data
  * @packedData {buffer, index, messageId}
  */
-export default async function pack(data,messageId) {
-
+export default async function pack(data,messageId, chunkLen = 1024 * 64) {
+  console.log('chunklen', chunkLen)
   data = await Promise.all(data.map(getByte))
 
   const argsTypes = data.map(it => it.type)
@@ -14,8 +14,6 @@ export default async function pack(data,messageId) {
   let blob = new Blob(data.map(it => it.buffer))
 
   let index = 0
-
-  const chunkLen = 1024 * 64
 
   while (blob.size) {
     let header

@@ -1,4 +1,4 @@
-import WebRtc from './rtc.js'
+import RTC from './rtc.js'
 import socket from '@/socket'
 import uuid from 'uuid/v4'
 import { EventEmitter } from '@/tools'
@@ -37,7 +37,7 @@ export default class extends EventEmitter {
   }
 
   createRTC({ toSocketId, rtcid, roomid }) {
-    const peer = new WebRtc({ config: iceConfig })
+    const peer = new RTC({ config: iceConfig })
     peer.id = rtcid
     this.peers.push(peer)
 

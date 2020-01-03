@@ -1,8 +1,8 @@
 import { EventEmitter } from '@/tools'
-import WebRTCChat from './webrtc-chart'
+import WebRTCChat from './webrtc-chat'
 
 
-export default class extends EventEmitter {
+export default class RTC extends EventEmitter {
   emitQueue = []
   cutData = {}
   cutIndex = 0
@@ -20,14 +20,7 @@ export default class extends EventEmitter {
     this.pc.onicecandidate = event => {
       this.emitLocal('candidate', event.candidate)
     }
-
-    this.dc = this.pc.createDataChannel('channel', {
-      negotiated: true,
-      id: 123,
-      ordered : false,
-    })
-    this.dc.binaryType = 'arraybuffer'
-    this.chat = new WebRTCChat(this.dc)
+    this.chat = new WebRTCChat(this.pc)
     this.chat.on('message', this.incomingMessage.bind(this))
   }
 
@@ -67,7 +60,6 @@ export default class extends EventEmitter {
   }
 
   async incomingMessage(data) {
-    console.log('this', this)
     this.emitLocal(...data)
     this.emitLocal('message', data)
   }

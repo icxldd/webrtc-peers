@@ -53,8 +53,14 @@ export const parseFragment = function(buffer) {
     lenBufferIndex + 1,
     headerLen + lenBufferIndex + 1
   )
+  let header
+  try {
+    header = JSON.parse(decode(headerBuffer))
+  } catch (e) {
+    console.log('headererror',headerBuffer)
+  }
   return {
-    header: JSON.parse(decode(headerBuffer)),
+    header,
     content: buffer.subarray(headerLen + lenBufferIndex + 1)
   }
 }
@@ -110,3 +116,33 @@ export const reader = new Proxy(
     }
   }
 )
+
+export class EventEmitter {
+  _events = {}
+  emit(key, ...data) {
+    if (this._events[key]) {
+      this._events[key].forEach(it => it(...data))
+    }
+    return this
+  }
+
+  on(key, fn) {
+    if (!this._events[key]) {
+      this._events[key] = []
+    }
+    this._events[key].push(fn)
+    return this
+  }
+
+  off(key, fn) {
+    if (!this._events[key]) {
+      return false
+    }
+    if (!fn) {
+      return (this._events[key] = null)
+    }
+
+    this._events[key] = this._events[key].filter(it => it !== fn)
+    return this
+  }
+}

@@ -1,13 +1,14 @@
 import pack from './pack.js'
 import unpack from './unpack.js'
-import { encode, randomStr } from './tool'
-export default class DataTrans {
-  sendQueue = []
+import { encode, randomStr, EventEmitter } from '../tool'
+export default class DataTrans extends EventEmitter {
   _backupObj = {}
-  _events = {}
-  constructor() {
+  unpack = unpack
+  constructor(config) {
+    super()
+
+    this.chunkByteLength = config && config.chunkByteLength
     unpack.onmessage = data => {
-      console.log('over', data)
       this.emit('unpackover', data)
     }
     unpack.onnotice = this._notice.bind(this)
@@ -15,14 +16,14 @@ export default class DataTrans {
     unpack.onunpackprogress = this._onunpackprogress.bind(this)
     unpack.onprogress = this._onpackprogress.bind(this)
 
-    this.unpack = unpack
     pack.onmessage = this._getPackeddata.bind(this)
   }
   pack(val) {
     const messageId = randomStr()
-    pack(val, messageId)
+    pack(val, messageId, this.chunkByteLength)
     return messageId
   }
+  clear() {}
   /**
    *
    * @param {string} messageId
@@ -30,8 +31,7 @@ export default class DataTrans {
    */
   _notice(data) {
     const sendBuffer = encode(`%${JSON.stringify(data)}`)
-    this.sendQueue.push(sendBuffer)
-    this._packover()
+    this._packover(sendBuffer)
   }
   /**
    * 通知信息的反馈
@@ -41,7 +41,7 @@ export default class DataTrans {
     if (!this._backupObj[messageId]) {
       return
     }
-    console.log('feed', messageId, type, lack)
+    console.log('feedback', messageId, type, lack)
     if (type === 0) {
       clearInterval(this._backupObj[messageId].firstInterval)
     } else if (type === 1) {
@@ -53,11 +53,11 @@ export default class DataTrans {
     } else if (type === 2) {
       const buffers = this._backupObj[messageId].buffers
       const buffersBack = {}
-      const needsend = lack.map(it => {
-        return (buffersBack[it] = buffers[it])
+      lack.forEach(it => {
+        buffersBack[it] = buffers[it]
+        this._packover(buffersBack[it])
       })
       this._backupObj[messageId].buffers = buffersBack
-      this.sendQueue.push(...needsend)
     }
   }
   _onpackprogress(header) {
@@ -77,8 +77,7 @@ export default class DataTrans {
         this._backupObj[messageId].lastInterval = interval
       }
     } else {
-      this.sendQueue.push(buffer)
-      this._packover()
+      this._packover(buffer)
     }
   }
   _backup(buffer, index, messageId) {
@@ -87,40 +86,16 @@ export default class DataTrans {
     }
     this._backupObj[messageId].buffers[index] = buffer
   }
-  async _packover() {
-    if (this._sendStart) {
-      return
-    }
-
-    this._sendStart = true
-    for (let i = 0; i < this.sendQueue.length; ) {
-      const data = await this.sendQueue.shift()
-      this.emit('packover', data)
-    }
-    this._sendStart = false
+  async _packover(data) {
+    data  = await data
+    this.emit('packover', data)
   }
   _sendUntilFeedBack(data) {
-    this.sendQueue.unshift(data)
-    this._packover()
+ 
+    this._packover(data)
 
     return setInterval(() => {
-      this.sendQueue.unshift(data)
-      this._packover()
+      this._packover(data)
     }, 5000)
-  }
-
-  emit(key, ...data) {
-    if (this._events[key]) {
-      this._events[key].forEach(it => it(...data))
-    }
-    return this
-  }
-
-  on(key, fn) {
-    if (!this._events[key]) {
-      this._events[key] = []
-    }
-    this._events[key].push(fn)
-    return this
   }
 }

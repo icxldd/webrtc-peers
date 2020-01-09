@@ -1,5 +1,5 @@
 import { EventEmitter } from '@/tools'
-import WebRTCChat from './webrtc-chat'
+import WebRTCChat from '@/plugins/webrtc-chat'
 
 
 export default class RTC extends EventEmitter {

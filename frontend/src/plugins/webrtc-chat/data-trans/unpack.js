@@ -1,20 +1,36 @@
+import { decode, parseFragment, reader ,getHeader} from '../tool'
 
-import { decode, parseFragment, reader } from '../tool'
+export default class Unpacker {
+  _controller = null
+  res = null
+  unpack(buffer) {
+    if (!this.res) {
+      const {header,leftBuffer}= getHeader(buffer)
+      buffer = leftBuffer
+      const readStream = new ReadableStream({
+        start: controller => {
+          this._controller = controller
+        }
+      })
+      
+      this.res = new Response(readStream, {headers: header})
+
+      this.onunpackover(this.res)
+    }
+    
+    this.onunpackprogress(buffer.byteLength)
+    
 
 
-const unpack = async function(data) {
-  const { content, header } = parseFragment(data)
-  if (!cutData[messageId].buffers[index]) {
-    cutData[messageId].buffers[index] = content
-    cutData[messageId].getByte += content.byteLength
-    unpack.onprogress(cutData[messageId])
   }
 }
 
-/**
- * 按照套接字解包,只对emit('aaa', 'xx', {}, arraybuffer)解包,不对对象的某个属性是blob这种格式解包.
- * @returns {[promise]}
- */
+let data = 0
+const unpack = async function(data) {
+  const { leftBuffer, header } = parseFragment(data)
+  unpack.onprogress(cutData[messageId])
+}
+
 function _unpack(messageId) {
   let { buffers, ...header } = cutData[messageId]
   let start = 0,

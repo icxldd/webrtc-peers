@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      a = {
+        a: null,
+        b: "sss",
+        c: [1, { a: new Uint8Array([1, 34])}, new Blob(['asf']), 22],
+        d: new Uint8Array([1, 34, 1, 34, 123]),
+        e: new Blob(["faaa"]),
+        f: {
+          ac: 1,
+          d: new Uint8Array([2, 34, 23])
+        }
+      };
+
+
+    function trans(obj) {
+  
+      let record = [], // [['a.b.c', 2341334]]
+      buffers=[] //[buffer]
+      function go(obj,path =[]) {
+        for(let key in obj) {
+          let val = obj[key]
+          let keypath = [...path,key].join('.')
+          if(val instanceof Uint8Array) {
+            record.push([keypath, `1, ${val.byteLength}`])
+            Reflect.deleteProperty(obj,key)
+            buffers.push(val)
+          } else if(val instanceof Blob) {
+            record.push([keypath, `2, ${val.size}`])
+            buffers.push(val)   
+            Reflect.deleteProperty(obj,key)
+          } else if(typeof val === 'object') {
+            go(val,[...path, key])
+          }
+        }
+      }
+      go(obj)
+      let b = new Blob([JSON.stringify([obj,record])])
+      // '1100,[obj,record]buffers' 其中1100[obj,record]所占的长度
+      console.log('p',[`${b.size},`, b,...buffers])
+      return new Blob([`${b.size},`, b,...buffers])
+    }
+    let b = trans(a)
+
+    buff = b.arrayBuffer().then(res => {
+      console.log('bf',res, 'back', back(res))
+    })
+    let d = new TextDecoder()
+    
+    function back(buff) {
+ 
+      buff = new Uint8Array(buff)
+      let len = buff.indexOf(44)
+      let aa = d.decode(buff.subarray(0, len))
+      buff = buff.subarray(len+1)
+     let  aaa = d.decode(buff.subarray(0,aa))
+     console.log(aaa)
+      let [obj, record] = JSON.parse(aaa)
+      console.log(record)
+      buff = buff.subarray(aa)
+      for (let [keypath, val] of record) {
+        let [type, size] = val.split(',')
+        let buf = buff.subarray(0, +size)  
+        if(type == 2) {
+          buf = new Blob([buf])
+        }
+        keypath = keypath.split('.')
+        let obj2 = obj
+        for(let i=0;i< keypath.length;i++) {
+          let key = keypath[i]
+          if(i === keypath.length-1) {
+            obj2[key] = buf
+          } else {
+            obj2 = obj2[key]
+          }
+        }
+        buff = buff.subarray(+size)
+
+      }
+      return obj
+    }
+
+    </script>
+  </body>
+</html>

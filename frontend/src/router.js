@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import Router from 'vue-router'
-import Rtc from '@/components/rtc.vue'
+import Rtc from '@/views/rtc.vue'
 
 Vue.use(Router)
 

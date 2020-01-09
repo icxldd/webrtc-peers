@@ -1,25 +1,14 @@
 import { EventEmitter, randomStr } from './tool'
 export default class DC extends EventEmitter {
-  dcs = []
-  constructor(pc, config) {
+  constructor(pc, label, config) {
     super()
     this.pc = pc
-    window.dcs = this
 
-    this.config = Object.assign({ maxCount: 5 }, config)
-    pc.ondatachannel = e => {
-      const dc = e.channel
-      this._dcEventHandler(dc)
-    }
     this._create({ negotiated: true, id: 0 })
   }
-  _create(config) {
-    const defaultConfig = {
-      ordered: false
-    }
-    Object.assign(defaultConfig, config)
+  _create(config, label) {
     const dc = this.pc.createDataChannel(
-      'channel-webrtc-chat',
+      
       defaultConfig
     )
     console.log('dc', dc)

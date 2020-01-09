@@ -3,19 +3,53 @@ import DC from './dc-manager'
 import { EventEmitter, getByte } from './tool'
 export default class WebRTCChart extends EventEmitter {
   sendQueue = []
+  datachannels = {}
   constructor(pc) {
     super()
-    this.dcManager = new DC(pc)
+    this.pc = pc
+    pc.ondatachannel = e => {
+      const dc = e.channel
+      this._dcEventHandler(dc)
+    }
+    // this.dcManager = new DC(pc)
 
+    // this.trans = new DataTrans()
+
+    // this.dcManager.on('message', data => this.trans.unpack(data))
+
+    // this.trans
+    //   .on('packover', this._beforeSend.bind(this))
+    //   .on('unpackover', this._unpackover.bind(this))
+    //   .on('progress', this.progress.bind(this))
+  }
+  create(channel, config) {
     this.trans = new DataTrans()
-
-    this.dcManager.on('message', data => this.trans.unpack(data))
-
+    Object.assign(defaultConfig, config)
+    this.pc.createDataChannel(channel, config)
+    console.log('dc', dc)
+    this._dcEventHandler(dc)
     this.trans
       .on('packover', this._beforeSend.bind(this))
       .on('unpackover', this._unpackover.bind(this))
       .on('progress', this.progress.bind(this))
   }
+  _dcEventHandler(dc) {
+    dc.binaryType = 'arraybuffer'
+
+    dc.addEventListener('message', e => {
+      this.emit('message', e.data)
+    })
+    dc.addEventListener('open', () => {})
+
+    dc.addEventListener('bufferedamountlow', () => {})
+
+    dc.addEventListener('error', () => this._del(dc))
+    dc.addEventListener('close', () => this._del(dc))
+  }
+  _del(dc) {
+    this.dcs = this.dcs.filter(it => it !== dc)
+  }
+
   _unpackover(data) {
     this.emit('message', data)
   }

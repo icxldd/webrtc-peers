@@ -5,7 +5,7 @@ export default class DC extends EventEmitter {
 
   constructor(pc) {
     super()
-    if()
+
     pc.create
     this.trans = new DataTrans()
 

@@ -8,6 +8,13 @@
   </head>
   <body>
     <script>
+      const getType = function(val) {
+  if (val && val.buffer && val.buffer instanceof ArrayBuffer) {
+    return 'ArrayBuffer'
+  }
+  const toString = Object.prototype.toString
+  return toString.call(val).slice(8, -1)
+}
       a = {
         a: null,
         b: "sss",
@@ -20,40 +27,53 @@
         }
       };
 
+ function dataToBlob(obj) {
+  let record = [], // [['a.b.c', 2341334]]
+    buffers = [], //[buffer]
+    nwObj = {}
+  obj = { _: obj }
+ 
+  function start(obj, nwObj, path = []) {
+    for (let key in obj) {
+      let val = obj[key],
+        keypath = [...path, key].join('.'),
+        type = getType(val)
 
-    function trans(obj) {
-  
-      let record = [], // [['a.b.c', 2341334]]
-      buffers=[] //[buffer]
-      function go(obj,path =[]) {
-        for(let key in obj) {
-          let val = obj[key]
-          let keypath = [...path,key].join('.')
-          if(val instanceof Uint8Array) {
-            record.push([keypath, `1, ${val.byteLength}`])
-            Reflect.deleteProperty(obj,key)
-            buffers.push(val)
-          } else if(val instanceof Blob) {
-            record.push([keypath, `2, ${val.size}`])
-            buffers.push(val)   
-            Reflect.deleteProperty(obj,key)
-          } else if(typeof val === 'object') {
-            go(val,[...path, key])
-          }
-        }
+      if (getType(val) === 'ArrayBuffer') {
+        record.push([keypath, `1, ${val.byteLength}`])
+        buffers.push(val)
+        continue
       }
-      go(obj)
-      let b = new Blob([JSON.stringify([obj,record])])
-      // '1100,[obj,record]buffers' 其中1100[obj,record]所占的长度
-      console.log('p',[`${b.size},`, b,...buffers])
-      return new Blob([`${b.size},`, b,...buffers])
+      if (val instanceof Blob) {
+        record.push([keypath, `2, ${val.size}`])
+        buffers.push(val)
+        continue
+      }
+      
+      if (type === 'Array') {
+        nwObj[key] = []
+        start(val, [...path, key])
+      } else if (type === 'Object') {
+        nwObj[key] = Object.create(null)
+      } else {
+        nwObj[key] = val
+      }
+      if (typeof val === 'object') {
+        start(val,nwObj[key], [...path, key])
+      }
     }
-    let b = trans(a)
+  }
+  start(obj,nwObj)
+  console.log(nwObj,record,buffers)
+  let b = new Blob([JSON.stringify([nwObj, record])])
+  // '1100,[obj,record]buffers' 其中1100[obj,record]所占的长度
+  return new Blob([`${b.size},`, b, ...buffers])
+}
 
-    buff = b.arrayBuffer().then(res => {
-      console.log('bf',res, 'back', back(res))
-    })
-    let d = new TextDecoder()
+    // buff = b.arrayBuffer().then(res => {
+    //   console.log('bf',res, 'back', back(res))
+    // })
+    // let d = new TextDecoder()
     
     function back(buff) {
  

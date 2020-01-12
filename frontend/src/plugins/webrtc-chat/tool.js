@@ -16,10 +16,17 @@ export const randomStr = function(len) {
 }
 export const types = {
   Arraybuffer: 1,
-  blob: 2,
+  Blob: 2,
+  undefined: 3,
+  null: 4,
+  Object: 5,
+  Array: 6
 }
 
 export const getType = function(val) {
+  if (val && val.buffer && val.buffer instanceof ArrayBuffer) {
+    return 'ArrayBuffer'
+  }
   const toString = Object.prototype.toString
   return toString.call(val).slice(8, -1)
 }
@@ -33,117 +40,173 @@ export const setHeader = function(header) {
   return encode(`${buffer.byteLength},${s}`)
 }
 
-export const getHeader = function(buffer) {
+// strbuffer -> "1000," 返回1000
+export const getDescByteLen = function(buffer) {
   buffer = new Uint8Array(buffer)
 
   let lenBufferIndex = buffer.indexOf(44) // 44为,
-  const headerLen = +decode(buffer.subarray(0, lenBufferIndex))
+  if (lenBufferIndex === -1) {
+    return {
+      descByteLen: -1,
+      leftbuffer: buffer
+    }
+  }
+  return {
+    descByteLen: +decode(buffer.subarray(0, lenBufferIndex)),
+    leftbuffer: buffer.subarray(lenBufferIndex + 1)
+  }
+}
+export const parseHeader = function(buffer) {
+  buffer = new Uint8Array(buffer)
+  let { descByteLen, leftbuffer } = getDescByteLen(buffer)
+  if (descByteLen === -1 || leftbuffer.byteLength < descByteLen) {
+    return {
+      header: null,
+      leftbuffer
+    }
+  }
 
-  const headerBuffer = buffer.subarray(
-    lenBufferIndex + 1,
-    headerLen + lenBufferIndex + 1
-  )
+  const headerBuffer = leftbuffer.subarray(0, descByteLen)
   let header = JSON.parse(decode(headerBuffer))
 
   return {
     header,
-    leftbuffer: buffer.subarray(headerLen + lenBufferIndex + 1)
-  }
-}
-
-export const getByte = async function(it) {
-  let type = getType(it)
-
-  let buffer
-  if (type === 'String') {
-    buffer = encode(it)
-  } else if (type === 'Blob') {
-    buffer = await reader.readAsArrayBuffer(it)
-  }  else if (type === 'Boolean') {
-    buffer = new Uint8Array([it])
-  } else if (type === 'Number') {
-    buffer = encode(it)
-  } else if (type === 'Object' || type === 'Array') {
-    buffer = await reader.readAsArrayBuffer(new Blob([JSON.stringify(it)]))
-  } else if (it.buffer && it.buffer instanceof ArrayBuffer) {
-    buffer = it
-    type= 'Arraybuffer'
-  }
-  return {
-    type: types[type], // 转换成1，2，3等
-    buffer
+    leftbuffer: leftbuffer.subarray(descByteLen)
   }
 }
 
 export const mergeBuffer = function(...datas) {
   let len = 0
+
   for (let it of datas) {
+    if (getType(it) !== 'AarrayBuffer') {
+      throw new Error(`mergebuffer args must be buffer`)
+    }
     len += it.byteLength
   }
   let result = new Uint8Array(len)
   let offset = 0
   for (let it of datas) {
+    if (!(it instanceof Uint8Array)) {
+      it = new Uint8Array(it.buffer)
+    }
     result.set(it, offset)
     offset += it.byteLength
   }
   return result
 }
 
+/**
+ *
+ * @param {object} obj
+ * @return {Blob} 1100,[obj,record]buffers' 其中1100[obj,record]所占的长度
+ */
 
-export function jsonToBlob(obj) {
+export  function dataToBlob(obj) {
   let record = [], // [['a.b.c', 2341334]]
-  buffers=[] //[buffer]
-  function start(obj,path =[]) {
-    for(let key in obj) {
-      let val = obj[key]
-      let keypath = [...path,key].join('.')
-      if(val instanceof Uint8Array) {
+    buffers = [], //[buffer]
+    nwObj = {}
+  obj = { _: obj }
+ 
+  function start(obj, nwObj, path = []) {
+    for (let key in obj) {
+      let val = obj[key],
+        keypath = [...path, key].join('.'),
+        type = getType(val)
+
+      if (getType(val) === 'ArrayBuffer') {
         record.push([keypath, `1, ${val.byteLength}`])
-        Reflect.deleteProperty(obj,key)
         buffers.push(val)
-      } else if(val instanceof Blob) {
+        continue
+      }
+      if (val instanceof Blob) {
         record.push([keypath, `2, ${val.size}`])
-        buffers.push(val)   
-        Reflect.deleteProperty(obj,key)
-      } else if(typeof val === 'object') {
-        start(val,[...path, key])
+        buffers.push(val)
+        continue
+      }
+      
+      if (type === 'Array') {
+        nwObj[key] = []
+        start(val, [...path, key])
+      } else if (type === 'Object') {
+        nwObj[key] = Object.create(null)
+      } else {
+        nwObj[key] = val
+      }
+      if (typeof val === 'object') {
+        start(val,nwObj[key], [...path, key])
       }
     }
   }
-  start(obj)
-  let b = new Blob([JSON.stringify([obj,record])])
+  start(obj,nwObj)
+  console.log(nwObj,record,buffers)
+  let b = new Blob([JSON.stringify([nwObj, record])])
   // '1100,[obj,record]buffers' 其中1100[obj,record]所占的长度
-  return new Blob([`${b.size},`, b,...buffers])
+  return new Blob([`${b.size},`, b, ...buffers])
+}
+/**
+ *
+ * @param {Blob} blob
+ * @returns {Object Blob} {obj,record} blob
+ */
+async function parseBlob(blob) {
+  let objbytelen
+  for (let i = 1024; i < blob.size; i += 1024) {
+    let buff = await reader.readAsArrayBuffer(blob.slice(0, i))
+    let index = buff.indexOf(44)
+    if (index === -1) {
+      continue
+    }
+
+    objbytelen = decode(buff.subarray(0, index))
+    blob = blob.slice(index + 1) //除去'1000，' 剩余的blob
+    break
+  }
+
+  if (!objbytelen) {
+    throw new Error('not find ,')
+  }
+
+  let objBlob = blob.slice(0, objbytelen)
+
+  return {
+    objBlob,
+    leftBlob: blob.slice(objbytelen)
+  }
 }
 
-export function blobToJson(buff) {
-  buff = new Uint8Array(buff)
-  let len = buff.indexOf(44)
-  let aa = decode(buff.subarray(0, len))
-  buff = buff.subarray(len+1)
-  let  aaa = decode(buff.subarray(0,aa))
-  let [obj, record] = JSON.parse(aaa)
-  buff = buff.subarray(aa)
+/**
+ * @param {blob} 1100,[obj,record]buffers' 其中1100[obj,record]所占的长度
+ * @return {obj}
+ */
+export async function blobToData(blob) {
+  let { objBlob, leftBlob } = await parseBlob(blob)
+
+  let arrStr = await reader.readAsText(objBlob)
+  const [obj, record] = Object.parse(arrStr)
+  if (!leftBlob.size) {
+    return obj
+  }
+
   for (let [keypath, val] of record) {
     let [type, size] = val.split(',')
-    let buf = buff.subarray(0, +size)  
-    if(type == 2) {
-      buf = new Blob([buf])
+    let buf = leftBlob.slice(0, size)
+    if (type == 1) {
+      buf = await reader.readAsArrayBuffer(buf)
     }
     keypath = keypath.split('.')
     let obj2 = obj
-    for(let i=0;i< keypath.length;i++) {
+    for (let i = 0; i < keypath.length; i++) {
       let key = keypath[i]
-      if(i === keypath.length-1) {
+      if (i === keypath.length - 1) {
         obj2[key] = buf
       } else {
         obj2 = obj2[key]
       }
     }
-    buff = buff.subarray(+size)
-
+    leftBlob = leftBlob.slice(size)
   }
-  return obj
+  return obj._
 }
 
 export const reader = new Proxy(

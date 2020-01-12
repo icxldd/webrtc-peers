@@ -1,42 +1,20 @@
 import Packer from './packer.js'
-import unpack from './unpack.js'
-import { encode, randomStr, EventEmitter } from '../tool'
+import Unpacker from './unpacker.js'
+import { encode, randomStr, EventEmitter ,reader} from '../tool'
 export default class DataTrans extends EventEmitter {
-  unpack = unpack
-  pack = pack
+
   constructor(config) {
     super()
-
-    unpack.unpackover = data => {
-      this.emit('unpackover', data)
-    }
-    unpack.onunpackprogress = this._onunpackprogress.bind(this)
-    unpack.onprogress = this._onpackprogress.bind(this)
-
+    this.unpacker = new Unpacker()
+    this.unpacker.unpackover = data => this.emit('unpackover', data)
+    this.unpacker.onprogress = mess=> this.emit('unpackprogress', mess)
 
     this.packer = new Packer()
-    this.packer.onpackover = this._getPackeddata.bind(this)
+    this.packer.onpackover = this._packover.bind(this)
+    this.packer.onprogress = mess => this.$emit('packprogress', mess)
   }
-
-  _onpackprogress(header) {
-    this.emit('progress', header)
-  }
-  _onunpackprogress(header) {
-    this.emit('progress', header)
-  }
-  _getPackeddata(blob, header) {
-  
-    this._packover(buffer)
-    
-  }
-  _backup(buffer, index, messageId) {
-    if (!this._backupObj[messageId]) {
-      this._backupObj[messageId] = { buffers: {} }
-    }
-    this._backupObj[messageId].buffers[index] = buffer
-  }
-  async _packover(data) {
-    data  = await data
-    this.emit('packover', data)
+  async _packover(blob,headers) {
+    const data  = await reader.readAsArrayBuffer(blob)
+    this.emit('packover', data,headers)
   }
 }

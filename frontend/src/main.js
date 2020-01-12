@@ -9,8 +9,6 @@ import App from './App'
 import router from '@/router'
 import elementUi from 'element-ui'
 
-
-
 Vue.use(elementUi)
 Vue.config.productionTip = false
 

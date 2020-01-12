@@ -1,38 +1,25 @@
-import DataTrans from './data-trans'
-import DC from './dc-manager'
-import { EventEmitter, getByte } from './tool'
+import Datachannel from './datachannel'
+import { EventEmitter } from './tool'
 export default class WebRTCChart extends EventEmitter {
   sendQueue = []
   datachannels = {}
   constructor(pc) {
     super()
     this.pc = pc
-    pc.ondatachannel = e => {
-      const dc = e.channel
-      this._dcEventHandler(dc)
+    pc.createDatachannel
+    this.pc.ondatachannel = e => {
+
     }
-    // this.dcManager = new DC(pc)
-
-    // this.trans = new DataTrans()
-
-    // this.dcManager.on('message', data => this.trans.unpack(data))
-
-    // this.trans
-    //   .on('packover', this._beforeSend.bind(this))
-    //   .on('unpackover', this._unpackover.bind(this))
-    //   .on('progress', this.progress.bind(this))
   }
-  create(channel, config) {
-    this.trans = new DataTrans()
-    Object.assign(defaultConfig, config)
-    this.pc.createDataChannel(channel, config)
-    console.log('dc', dc)
-    this._dcEventHandler(dc)
-    this.trans
-      .on('packover', this._beforeSend.bind(this))
-      .on('unpackover', this._unpackover.bind(this))
-      .on('progress', this.progress.bind(this))
+  _create() {
+    const dc = new Datachannel(this.pc)
+    this.datachannels[channel] = dc
+    return dc
   }
+  to(label) {
+    return this.datachannels[label]
+  }
+
   _dcEventHandler(dc) {
     dc.binaryType = 'arraybuffer'
 
@@ -47,7 +34,13 @@ export default class WebRTCChart extends EventEmitter {
     dc.addEventListener('close', () => this._del(dc))
   }
   _del(dc) {
-    this.dcs = this.dcs.filter(it => it !== dc)
+    Reflect.deleteProperty(this.datachannels, dc.label)
+  }
+  _onpackprogress(buffer, desc) {
+    this.emit('progress', desc)
+  }
+  _unpackprogress(data, desc) {
+    this.emit('progress', data, desc)
   }
 
   _unpackover(data) {
@@ -72,34 +65,5 @@ export default class WebRTCChart extends EventEmitter {
       speed + 'Mb/s',
       header
     )
-  }
-
-  async send(...data) {
-    if (typeof data[0] !== 'string') {
-      throw new Error('emit key must be String')
-    }
-
-    return this.trans.pack(data)
-  }
-
-  async *_send() {
-    while (true) {
-      if (!this.sendQueue.length) {
-        yield
-        continue
-      }
-
-      const data = this.sendQueue.shift()
-      console.log('send', data, this.sendQueue.length)
-      await this.dcManager.send(data)
-    }
-  }
-  _sendUntilFeedBack(data) {
-    this.sendQueue.unshift(data)
-    this._sendg.next()
-    return setInterval(() => {
-      this.sendQueue.unshift(data)
-      this._sendg.next()
-    }, 5000)
   }
 }

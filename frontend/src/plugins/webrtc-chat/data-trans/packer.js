@@ -1,4 +1,4 @@
-import { setHeader, getByte, reader, jsonToBlob, EventEmitter } from '../tool'
+import { setHeader, dataToBlob, EventEmitter } from '../tool'
 export default class Packer extends EventEmitter{
   _queue = []
   _isNoDataYield = 1
@@ -9,13 +9,13 @@ export default class Packer extends EventEmitter{
   pack(data) {
     this._queue.push(data)
     if (!this.y) {
-      this.y = this._pack()
+      this.y = this._slice()
       this.y.next()
     } else if (this._isNoDataYield) {
       this.y.next()
     }
   }
-  _pack() {
+  * _slice () {
   
     while (true) {
       if (!this._queue.length) {
@@ -30,11 +30,12 @@ export default class Packer extends EventEmitter{
         throw new Error('only 3 args are allowed: emit(key,value,header)')
       }
       const [key, value, header] = orgData
+
       if (getType(header) !== 'Object') {
         throw new Error('header must be object')
       }
   
-      const contentBlob = jsonToBlob([key, value])
+      const contentBlob = dataToBlob([key, value])
       const headerExtens = {total: contentBlob.size}
       if(header) {
         headerExtens.header = header
@@ -46,10 +47,11 @@ export default class Packer extends EventEmitter{
       while (blob.size) {
         let fragmentBlob = blob.slice(0, chunkSize)
         headerExtens.packedSize +=fragmentBlob.size
-        this.onpackover(fragmentBlob, headerExtens)
+        this.onprogress(fragmentBlob, headerExtens)
         yield
         blob = blob.slice(chunkSize)
       }
+      this.onpackover(headerExtens)
     }
   }
 

@@ -38,8 +38,10 @@ export default class extends EventEmitter {
     const peer = new RTC({ config: iceConfig })
     peer.id = rtcid
     peer.chat.onmessage = e => this.emitLocal(e.eventKey, e.data, e.desc)
-    peer.chat.onprogress = e =>
+    peer.chat.onprogress = e =>{
+      e.percent = (e.getBytes / e.total).toFixed(4)
       this.emitLocal(e.eventKey + ':progress', e)
+    }
 
     window.peer = peer
     this.sendCandidate(peer, toSocketId)
@@ -180,13 +182,11 @@ export default class extends EventEmitter {
       )(e => {
         map.set(peer, e.sendSize)
         const allSendSize = [...map.values()].reduce((p, n) => p + n, 0)
-        const percent = allSendSize / (e.total * map.size)
+        const percent = (allSendSize / (e.total * map.size)).toFixed(4)
         
         if (percent === 1) {
           this.off('peers:del', delFn)
-        
         }
-        console.log('eeee', e)
         p && p({
           ...e,
           peersCount: map.size,

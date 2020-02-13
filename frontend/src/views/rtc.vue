@@ -53,15 +53,15 @@
                 <i class="el-icon-document file-icon"></i>
                 <span class="file-name">{{ val.fileName }}</span>
                 <el-progress
-                  :percentage="Math.floor((val.getSize * 100) / val.size)"
+                  v-if="val.percent !== 1"
+                  :percentage="val.percent * 100"
                   color="#8e71c7"
-                  v-if="val.getSize !== val.size"
                 ></el-progress>
                 <el-progress
+                  v-else
                   :percentage="100"
                   color="#8e71c7"
                   status="success"
-                  v-else
                 ></el-progress>
               </div>
             </div>
@@ -108,7 +108,7 @@ export default {
       streams: [],
       isShowVideo: false, //电脑端不会手动修改为false
       /**
-       * {getSize, size,isSelf, user,fileName}
+       * {pendingSize, size,isSelf, user,fileName}
        *
        */
       chats: [],
@@ -181,7 +181,7 @@ export default {
 
       })
 
-      this._getchatMsg({ ...sendData, isSelf: true })
+      this.getChatText({ ...sendData, isSelf: true })
       const area = document.querySelector('.chat-area')
       area.innerHTML = ''
     },
@@ -195,25 +195,29 @@ export default {
         index: index++
         */
         const { file, ...data } = it
-        //{getSize, size,isSelf, user,fileName}
+        const chatMsg = {...it,isSelf: true,percent:0, total: 0,sendSize:0}
+        //{pendingSize, size,isSelf, user,fileName}
         rtcManager.emit('chat-file', file, {
           ...data,
           user: socket.id
         })(e => {
-          console.log(e)
+          if(!this.chats.some(it => it === chatMsg)) {
+            this.chats.push(chatMsg)
+          } 
+          chat.total = e.total
+          chat.sendSize = e.sendSize
+          chat.percent = e.percent
+          console.log(e, chat,e.percent)
         })
-        if (data.type === 'video') {
-          this.getVideo(it)
-        } else {
-          this._getchatMsg({ ...it, isSelf: true })
-        }
+        // if (data.type === 'video') {
+        //   this.getVideo(it)
+        // } else {
+        //   this.getChatText({ ...it, isSelf: true })
+        // }
       })
     },
     getVideo(it) {
       console.log('getvideo', it)
-    },
-    getFile() {
-
     },
     getImage() {
 
@@ -231,38 +235,37 @@ export default {
       area.innerHTML = ''
     },
 
-    async _getChatFile(data) {
-      const chat = this.chats.find(it => it.hash === hash)
-      chat.getSize = data.size
-      chat.file = new Blob([chat.file, data])
-      if (chat.type === 'file') {
-        return fileLoad({ data: chat.file, name: chat.fileName })
-      } else if (chat.type === 'video') {
-        await new Promise(this.$nextTick)
+    async getFile(data,desc) {
+       fileLoad({ data, name: desc.fileName })
+      // const chat = this.chats.find(it => it.hash === desc.hash)
+      // if (chat.type === 'file') {
+      //   return fileLoad({ data: chat.file, name: chat.fileName })
+      // } else if (chat.type === 'video') {
+      //   await new Promise(this.$nextTick)
 
-        const video = document.querySelector(`[hash="${chat.hash}"]`)
-        video.src = URL.createObjectURL(new Blob([chat.file]))
-      }
+      //   const video = document.querySelector(`[hash="${chat.hash}"]`)
+      //   video.src = URL.createObjectURL(new Blob([chat.file]))
+      // }
     },
-    async _getchatMsg(chat) {
+    async getChatText(chat) {
       this.chats.push(chat)
       console.log('chat', chat)
       await new Promise(this.$nextTick)
-
-      if (chat.msg && chat.msg.includes('hash=')) {
-        const hash = /hash="(.+?)"/g.exec(chat.msg)[1]
-        const div = document.querySelector(`[hash="${hash}"]`)
-        div.onclick = function() {
-          if (this.hasAttribute('fullscreen')) {
-            this.removeAttribute('fullscreen')
-          } else {
-            this.setAttribute('fullscreen', 'true')
-          }
-        }
-      }
-
       const ul = this.$refs.chat
       ul.scrollTop = ul.scrollHeight
+      // if (chat.msg && chat.msg.includes('hash=')) {
+      //   const hash = /hash="(.+?)"/g.exec(chat.msg)[1]
+      //   const div = document.querySelector(`[hash="${hash}"]`)
+      //   div.onclick = function() {
+      //     if (this.hasAttribute('fullscreen')) {
+      //       this.removeAttribute('fullscreen')
+      //     } else {
+      //       this.setAttribute('fullscreen', 'true')
+      //     }
+      //   }
+      // }
+
+
     },
 
     _streamChange(value) {
@@ -275,34 +278,36 @@ export default {
     _peersChange(peers) {
       this.peersLength = peers.length
     },
-    _getchatprogress(e) {
-      console.log('getprogress', e)
-    },
-    async  getChatFileProgress(e) {
-      //{getSize, size,isSelf, user,fileName}
-      const chat = this.chats.find(it => it.hash === e.desc.hash)
+    getChatFileProgress(e) {
+      //{pendingSize, size,isSelf, user,fileName}
+      let chat = this.chats.find(it => it.hash === e.desc.hash)
+      
       if(!chat) {
-        this.chats.push({})
+        chat = {...e.desc, percent: e.percent}
+        this.chats.push(chat)
       }
-      chat.getSize = data.size
-      chat.file = new Blob([chat.file, data])
-      if (chat.type === 'file') {
-        return fileLoad({ data: chat.file, name: chat.fileName })
-      } else if (chat.type === 'video') {
-        await new Promise(this.$nextTick)
+      chat.percent = e.percent
+      console.log('getprogress', e, chat.percent)
 
-        const video = document.querySelector(`[hash="${chat.hash}"]`)
-        video.src = URL.createObjectURL(new Blob([chat.file]))
-      }
+      // if (chat.type === 'file') {
+      //   return fileLoad({ data: chat.file, name: chat.fileName })
+      // } else if (chat.type === 'video') {
+      //   await new Promise(this.$nextTick)
+
+      //   const video = document.querySelector(`[hash="${chat.hash}"]`)
+      //   video.src = URL.createObjectURL(new Blob([chat.file]))
+      // }
     }
   },
   created() {
     rtcManager
       .on('streams', this._streamChange)
-      .on('chat', this._getchatMsg)
-      .on('chat-file', this._getChatFile)
+      .on('chat', this.getChatText)
+      .on('chat-file', this.getFile)
       .on('chat-file:progress', this.getChatFileProgress)
-      .on('chat:progress', this._getchatprogress)
+      // .on('chat-img', this.getImg)
+      // .on('chat-img:progress', this.getChatFileProgress)
+      // .on('chat:progress', this._getchatprogress)
       .on('peers:change', this._peersChange)
   }
 }

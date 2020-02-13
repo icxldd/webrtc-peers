@@ -8,6 +8,7 @@ export  class EventEmitter {
   }
 
   on(key, fn) {
+    if(typeof fn !=='function') throw new Error('secend argument must be function')
     if (!this.events[key]) {
       this.events[key] = []
     }

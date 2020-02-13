@@ -1,13 +1,7 @@
-import { EventEmitter } from '@/tools'
 import WebRTCChat from '@/plugins/webrtc-chat'
-
-
+import { EventEmitter } from '@/tools'
 export default class RTC extends EventEmitter {
-  emitQueue = []
-  cutData = {}
-  cutIndex = 0
   constructor({ config }) {
-    // 传递事件
     super()
     config = config || null
 
@@ -21,7 +15,7 @@ export default class RTC extends EventEmitter {
       this.emitLocal('candidate', event.candidate)
     }
     this.chat = new WebRTCChat(this.pc)
-    this.chat.on('message', this.incomingMessage.bind(this))
+    this.emit = this.chat.emit.bind(this.chat)
   }
 
   /**
@@ -57,16 +51,5 @@ export default class RTC extends EventEmitter {
     if (candidate) {
       this.pc.addIceCandidate(new RTCIceCandidate(candidate))
     }
-  }
-
-  async incomingMessage(data) {
-    this.emitLocal(...data)
-    this.emitLocal('message', data)
-  }
-
-  async emit(...data) {
-    
-    if (!data.length) return
-    this.chat.send(...data)
   }
 }

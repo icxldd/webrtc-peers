@@ -1,22 +1,36 @@
-import { setHeader, dataToBlob, EventEmitter } from '../tool'
-export default class Packer extends EventEmitter{
+import { setHeader, toBlob, getType } from '../tool'
+export default class Packer {
   _queue = []
   _isNoDataYield = 1
-  chunkSize=1024* 64
+  chunkSize = 1024 * 64
   constructor(chunkSize) {
     this.chunkSize = chunkSize || this.chunkSize
   }
-  pack(data) {
-    this._queue.push(data)
-    if (!this.y) {
-      this.y = this._slice()
-      this.y.next()
-    } else if (this._isNoDataYield) {
+  next() {
+    if (!this._isNoDataYield) {
       this.y.next()
     }
   }
-  * _slice () {
-  
+  pack(data) {
+    const info = { data }
+
+    const back = function(progress) {
+      info.p = progress
+    }
+    this._queue.push(info)
+
+    Promise.resolve().then(() => {
+      if (!this.y) {
+        this.y = this._slice()
+        this.y.next()
+      } else if (this._isNoDataYield) {
+        this.y.next()
+      }
+    })
+
+    return back
+  }
+  *_slice() {
     while (true) {
       if (!this._queue.length) {
         this._isNoDataYield = 1
@@ -24,35 +38,51 @@ export default class Packer extends EventEmitter{
         continue
       }
       this._isNoDataYield = 0
-  
-      let orgData = this._queue.shift()
-      if (orgData.length > 3) {
-        throw new Error('only 3 args are allowed: emit(key,value,header)')
-      }
-      const [key, value, header] = orgData
 
-      if (getType(header) !== 'Object') {
-        throw new Error('header must be object')
+      let dataInfo = this._queue.shift()
+      if (dataInfo.data.length > 3) {
+        throw new Error('only 3 args are allowed: emit(string,data,desc)')
       }
-  
-      const contentBlob = dataToBlob([key, value])
-      const headerExtens = {total: contentBlob.size}
-      if(header) {
-        headerExtens.header = header
+
+      const [eventKey, value, desc] = dataInfo.data
+
+      let valueBlob = new Blob()
+      if (value) {
+        valueBlob = toBlob(value)
+      }
+
+      const headerExtens = {
+        total: valueBlob.size,
+        type: getType(value),
+        eventKey
+      }
+      if (desc) {
+        headerExtens.desc = desc
       }
       const headerBuffer = setHeader(headerExtens)
-      
-      let blob = new Blob([headerBuffer, contentBlob])
-      headerExtens.packedSize = 0
+
+      let blob = new Blob([headerBuffer, valueBlob])
+      headerExtens.sendSize = 0
       while (blob.size) {
-        let fragmentBlob = blob.slice(0, chunkSize)
-        headerExtens.packedSize +=fragmentBlob.size
+        let fragmentBlob = blob.slice(0, this.chunkSize)
+        if (!headerExtens.sendSize) {
+          const delHeaderBufferLeftbuffer =
+            fragmentBlob.size - headerBuffer.byteLength
+          headerExtens.sendSize =
+            delHeaderBufferLeftbuffer > 0 ? delHeaderBufferLeftbuffer : 0
+        } else {
+          headerExtens.sendSize += fragmentBlob.size
+        }
         this.onprogress(fragmentBlob, headerExtens)
+        const p = dataInfo.p
+        p && p(headerExtens)
+        if (!blob.size) {
+          this.onpackover(headerExtens)
+          break
+        }
         yield
-        blob = blob.slice(chunkSize)
+        blob = blob.slice(this.chunkSize)
       }
-      this.onpackover(headerExtens)
     }
   }
-
 }

@@ -1,7 +1,7 @@
 import RTC from './rtc.js'
 import socket from '@/socket'
 import uuid from 'uuid/v4'
-import { EventEmitter } from '@/tools'
+import { EventEmitter, randomStr } from '@/tools'
 
 window.socket = socket
 const iceConfig = {
@@ -18,17 +18,15 @@ const iceConfig = {
 export default class extends EventEmitter {
   peers = []
   streams = []
-  emitqueue = []
   constructor() {
     super()
     socket.on('offer', data => this.onOffer(data))
     socket.on('answer', data => this.setAnswer(data))
     socket.on('candidate', data => this.setRemoteCandidate(data))
-    socket.on('broken', data => this.onSomeOneBroken(data))
+    // socket.on('broken', data => this.onSomeOneBroken(data))
   }
 
   async createRoom(data) {
-    this.clear()
     socket.emit('create-room', data)
 
     this.addStream()
@@ -39,27 +37,30 @@ export default class extends EventEmitter {
   createRTC({ toSocketId, rtcid, roomid }) {
     const peer = new RTC({ config: iceConfig })
     peer.id = rtcid
-    this.peers.push(peer)
+    peer.chat.onmessage = e => this.emitLocal(e.eventKey, e.data, e.desc)
+    peer.chat.onprogress = e =>
+      this.emitLocal(e.eventKey + ':progress', e)
 
-    window.peers = this.peers
-
+    window.peer = peer
     this.sendCandidate(peer, toSocketId)
     this.addRemoteStream(peer)
     this.sendLocalStream(peer)
-    this.dealLeave(peer)
     peer.toSocketId = toSocketId
-    peer.on('message', msg => this.onmessage(msg))
-    
+
     peer.pc.addEventListener('iceconnectionstatechange', event => {
+      console.log('statechange')
       console.log(peer.pc.iceConnectionState)
       this.onStateChange({ peer, roomid })
     })
-    
+
     return peer
   }
 
   onOffer(data) {
     const peer = this.createRTC({ rtcid: data.rtcid, toSocketId: data.from })
+    this.peers.push(peer)
+    this.emitLocal('peers:add', peer, this.peers)
+    this.emitLocal('peers:change', this.peers)
     peer.setOffer(data.offer).then(answer =>
       socket.emit('answer', {
         answer,
@@ -72,14 +73,15 @@ export default class extends EventEmitter {
 
   _call(toid, roomid) {
     const peer = this.createRTC({ rtcid: uuid(), toSocketId: toid, roomid })
+    this.peers.push(peer)
+    this.emitLocal('peers:add', peer, this.peers)
+    this.emitLocal('peers:change', this.peers)
     peer.createOffer().then(offer => {
       socket.emit('offer', { offer, from: socket.id, to: toid, rtcid: peer.id })
     })
-
   }
 
   async call(picked) {
-    this.clear()
     this.roomid = picked.roomid
 
     await this.addStream()
@@ -91,10 +93,7 @@ export default class extends EventEmitter {
 
   setAnswer(data) {
     const peer = this.to(data.rtcid)
-
-    if (peer) {
-      peer.setAnswer(data.answer)
-    }
+    peer.setAnswer(data.answer)
   }
 
   setRemoteCandidate(data) {
@@ -104,7 +103,7 @@ export default class extends EventEmitter {
     }
   }
 
-  getUserMedia(config = { video: { with: 320, height: 480 }, audio: true }) {
+  getUserMedia(config = { video: { with: 320, height: 480 }, audio: false }) {
     return navigator.mediaDevices.getUserMedia(config).catch(console.log)
   }
 
@@ -155,82 +154,52 @@ export default class extends EventEmitter {
     }
   }
 
-  /**
-   * 手动离开
-   * @param  peer
-   */
-  dealLeave(peer) {
-    peer.on('leave', () => {
-      this.afterLeave(peer)
-    })
-  }
-
-  /**
-   * 对方掉线了
-   * @param {socketid}
-   */
-  onSomeOneBroken({ socketid }) {
-    const peer = this.peers.find(it => it.toSocketId === socketid)
-    if (peer) {
-      this.afterLeave(peer)
-    }
-  }
-
-  /**
-   * 离开后删除rtc与 stream
-   */
-  afterLeave(peer) {
-    const streams = this.streams.filter(it => it.rtcid !== peer.id)
-    this.peers = this.peers.filter(it => it.id !== peer.id)
-    window.peers = this.peers
-
-    this.emitLocal('peers', peer, this.peers)
-
-    this.setStreams(streams)
-    peer.pc.close()
-  }
-
   onStateChange({ peer, roomid }) {
     const state = peer.pc.iceConnectionState
     if (state === 'connected') {
-      this.emitLocal('peers', peer, this.peers)
       if (roomid) {
         return socket.emit('jion', roomid)
       }
     }
-
-    if (state !== 'failed') return
-    // 给出3秒种断线重连 ：未补充
-    setTimeout(_ => {
-      if (state !== 'failed') return
-      this.afterLeave(peer)
-    }, 3000)
   }
-
-  clear() {
-    this.peers.forEach(it => {
-      it.emit('leave')
-      it.pc.close()
-    })
-
-    if (this.roomid) {
-      socket.emit('leave', this.roomid)
+  emit(key, data, desc) {
+    let sendSize = 0
+    const map = new Map()
+    const delFn = peer => {
+      map.delete(peer)
     }
-
-    window.peers = []
-    this.peers = []
-
-    this.setStreams([])
-  }
-
-  emit(key, ...data) {
-    this.peers.forEach(it => {
-      it.emit(key, ...data)
+    this.on('peers:del', delFn)
+    let p ,
+    overCount=0
+    this.peers.forEach(peer => {
+      map.set(peer, 0)
+      peer.emit(
+        key,
+        data,
+        desc
+      )(e => {
+        map.set(peer, e.sendSize)
+        const allSendSize = [...map.values()].reduce((p, n) => p + n, 0)
+        const percent = allSendSize / (e.total * map.size)
+        
+        if (percent === 1) {
+          this.off('peers:del', delFn)
+        
+        }
+        console.log('eeee', e)
+        p && p({
+          ...e,
+          peersCount: map.size,
+          percent: allSendSize / (e.total * map.size),
+          completedCount:[...map.values()].map(it => it===e.total).length,
+        })
+      })
     })
-  }
 
-  onmessage(data) {
-    this.emitLocal(...data)
+    return function(progress) {
+      if (typeof progress !== 'function') throw 'progress need function'
+      p = progress
+    }
   }
 
   setStreams(streams) {

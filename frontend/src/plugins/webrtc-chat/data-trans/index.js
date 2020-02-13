@@ -1,20 +1,21 @@
 import Packer from './packer.js'
 import Unpacker from './unpacker.js'
-import { encode, randomStr, EventEmitter ,reader} from '../tool'
+import { encode, randomStr, EventEmitter, reader } from '../tool'
 export default class DataTrans extends EventEmitter {
-
   constructor(config) {
     super()
     this.unpacker = new Unpacker()
-    this.unpacker.unpackover = data => this.emit('unpackover', data)
-    this.unpacker.onprogress = mess=> this.emit('unpackprogress', mess)
+    this.unpacker.onunpackover = (eventKey, data, desc) =>
+      this.emitLocal('unpackover', eventKey, data, desc)
+    this.unpacker.onprogress = (eventKey, buffer, header) =>
+      this.emitLocal('unpackprogress', eventKey, buffer, header)
 
     this.packer = new Packer()
-    this.packer.onpackover = this._packover.bind(this)
-    this.packer.onprogress = mess => this.$emit('packprogress', mess)
-  }
-  async _packover(blob,headers) {
-    const data  = await reader.readAsArrayBuffer(blob)
-    this.emit('packover', data,headers)
+    this.packer.onpackover = header => this.emitLocal('packover', header)
+    
+    this.packer.onprogress = (data, header) =>
+      this.emitLocal('packprogress', data, header)
+
+    // 打包后完整数据格式: headerlen,header content
   }
 }

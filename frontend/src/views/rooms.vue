@@ -1,48 +1,65 @@
 <template>
   <nav class="rtc-room">
     <div class="btns">
-      <el-button type="text" @click="dialogVisible = true">创建房间</el-button>
-      <el-button type="text" @click="jion">加入房间</el-button>
+      <button type="text" @click="dialogVisible = true">创建房间</button>
+      <button type="text" @click="jion">加入房间</button>
     </div>
     <ul v-if="rooms" class="rooms">
-      <li v-for="(val, key) in rooms" @dblclick="jion" :key="key" @click="picked=key" :class="{picked: picked === key}">
+      <li
+        v-for="(val, key) in rooms"
+        @dblclick="jion"
+        :key="key"
+        @click="picked = key"
+        :class="{ picked: picked === key }"
+      >
         <div class="info">
           <div class="name">
-            {{val.explain.name}}
+            {{ val.explain.name }}
           </div>
           <div class="tips">
-            {{val.explain.tips}}
+            {{ val.explain.tips }}
           </div>
         </div>
-        <img src="~assets/lock.svg" v-if="val.explain.secret" class="lock">
+        <img src="~assets/lock.svg" v-if="val.explain.secret" class="lock" />
       </li>
     </ul>
-    <el-dialog title="创建房间" :visible.sync="dialogVisible">
-      <v-row class="room-name">
-        <span slot="left">房间名:</span>
-        <v-input slot="right" v-model="name"></v-input>
-      </v-row>
-      <v-row class="room-tips">
-        <span slot="left">房间描述:</span>
-        <v-input slot="right" v-model="tips"></v-input>
-      </v-row>
-      <v-row class="room-tips">
-        <span slot="left">密码:</span>
-        <v-input slot="right" v-model="secret"></v-input>
-      </v-row>
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="dialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="createRoom">确 定</el-button>
-      </span>
-    </el-dialog>
-    <el-dialog title="输入密码" :visible.sync="secretDialog">
-      <v-input  v-model="fillSecret" :error.sync="secretError"></v-input>
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="secretDialog = false">取 消</el-button>
-        <el-button type="primary" @click="confSecret">确 定</el-button>
-      </span>
-    </el-dialog>
-
+    <transition name="v-dialog">
+      <v-dialog v-if="dialogVisible" class="create-room-dialog">
+        <template #title>创建房间</template>
+        <template #body>
+          <v-row class="room-name">
+            <span slot="left">房间名:</span>
+            <v-input slot="right" v-model="name"></v-input>
+          </v-row>
+          <v-row class="room-tips">
+            <span slot="left">房间描述:</span>
+            <v-input slot="right" v-model="tips"></v-input>
+          </v-row>
+          <v-row class="room-tips">
+            <span slot="left">密码:</span>
+            <v-input slot="right" v-model="secret"></v-input>
+          </v-row>
+        </template>
+        <template #footer>
+          <button @click="dialogVisible = false" class="cancel">取 消</button>
+          <button @click="createRoom" class="conf">确 定</button>
+        </template>
+      </v-dialog>
+    </transition>
+    <transition name="v-dialog">
+      <v-dialog v-if="secretDialog">
+        <template #title>
+          请输入密码
+        </template>
+        <template #body>
+          <v-input v-model="fillSecret" :error.sync="secretError"></v-input>
+        </template>
+        <template #footer>
+          <button @click="secretDialog = false" class="cancel">取 消</button>
+          <button @click="confSecret" class="conf">确 定</button>
+        </template>
+      </v-dialog>
+    </transition>
   </nav>
 </template>
 
@@ -122,9 +139,29 @@ export default {
 </script>
 <style lang="scss">
 .rtc-room {
-  .el-dialog {
-    min-width: 320px !important;
+  .v-dialog {
+    .v-dialog-body {
+      max-width: 600px;
+      min-width: 360px;
+      width: 80%;
+      margin: 10vh auto 0;
+      background: #fff;
+
+      padding: 20px;
+
+      .v-dialog-title {
+        padding-bottom: 20px;
+      }
+
+      .v-dialog-footer{
+        justify-content: flex-end;
+      }
+      button:not(:first-child) {
+        margin-left: 20px;
+      }
+    }
   }
+
   .rooms {
     border: 1px solid #ccc;
     min-height: 300px;
@@ -161,8 +198,13 @@ export default {
   .btns {
     display: flex;
     justify-content: space-around;
-    .el-button + .el-button {
-      margin-left: 0;
+    button{
+      background: #fff;
+      border: none;
+      color: #409eff;
+      &:hover{
+        color:  #409eff;
+      }
     }
   }
   input {
@@ -171,11 +213,6 @@ export default {
 
   .v-row {
     grid-template-columns: 70px 1fr;
-  }
-  .el-dialog {
-    max-width: 600px;
-    min-width: 360px;
-    width: 80%;
   }
   .room-tips {
     margin-top: 20px;

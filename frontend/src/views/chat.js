@@ -26,7 +26,7 @@ export default class {
     const name = file.name
     const hash = (Math.random() * 10 ** 17).toString()
     file = await fileReader({ data: file, type: 'blob' })
-    let html = `<div hash="${hash}"><i class="el-icon-document file-icon"></i><span class="file-name"> ${name}</span></div>`
+    let html = `<div hash="${hash}"><i class="v-icon-document file-icon"></i><span class="file-name"> ${name}</span></div>`
     this.autofiles.push({
       file,
       hash,

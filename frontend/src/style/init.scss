@@ -7,10 +7,33 @@
 a {
   color: #666;
 }
-.router-link-active {
-  color: #f56730;
+button {
+    outline: none;
+    width: 120px;
+    height: 32px;
+    border:none;
+    cursor: pointer;
+    &.conf{
+      background: #409EFF;
+      color: #fff;
+      &:hover{
+        background: #66b1ff;
+        border-color: #66b1ff;
+        color: #fff;
+      }
+    }
+    &.cancel{
+      background: #fff;
+      border:1px solid #dcdfe6;
+      color: #606266;
+      &:hover{
+        color: #409eff;
+        border-color: #c6e2ff;
+        background-color: #ecf5ff;
+      }
+    }
+  
 }
-
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

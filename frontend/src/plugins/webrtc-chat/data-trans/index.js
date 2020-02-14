@@ -10,11 +10,12 @@ export default class DataTrans extends EventEmitter {
     this.unpacker.onprogress = (eventKey, buffer, header) =>
       this.emitLocal('unpackprogress', eventKey, buffer, header)
 
-    this.packer = new Packer()
+    this.packer = new Packer(config)
     this.packer.onpackover = header => this.emitLocal('packover', header)
-    
+
     this.packer.onprogress = (data, header) =>
       this.emitLocal('packprogress', data, header)
+    this.setChunkSize = val => this.packer.setChunkSize(val)
 
     // 打包后完整数据格式: headerlen,header content
   }

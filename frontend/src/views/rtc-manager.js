@@ -39,7 +39,7 @@ export default class extends EventEmitter {
     peer.id = rtcid
     peer.chat.onmessage = e => this.emitLocal(e.eventKey, e.data, e.desc)
     peer.chat.onprogress = e =>{
-      e.percent = (e.getBytes / e.total).toFixed(4)
+      e.percent = e.getBytes/ e.total
       this.emitLocal(e.eventKey + ':progress', e)
     }
 
@@ -50,7 +50,6 @@ export default class extends EventEmitter {
     peer.toSocketId = toSocketId
 
     peer.pc.addEventListener('iceconnectionstatechange', event => {
-      console.log('statechange')
       console.log(peer.pc.iceConnectionState)
       this.onStateChange({ peer, roomid })
     })
@@ -105,8 +104,11 @@ export default class extends EventEmitter {
     }
   }
 
-  getUserMedia(config = { video: { with: 320, height: 480 }, audio: false }) {
-    return navigator.mediaDevices.getUserMedia(config).catch(console.log)
+  getUserMedia(config = { video: { with: 320, height: 480 }, audio: true }) {
+    if(location.protocol === 'https:' || location.hostname === 'localhost') {
+      return navigator.mediaDevices.getUserMedia(config).catch(console.log)
+    }
+    return  false
   }
 
   to(id) {
@@ -182,7 +184,7 @@ export default class extends EventEmitter {
       )(e => {
         map.set(peer, e.sendSize)
         const allSendSize = [...map.values()].reduce((p, n) => p + n, 0)
-        const percent = (allSendSize / (e.total * map.size)).toFixed(4)
+        const percent = allSendSize  / (e.total * map.size)
         
         if (percent === 1) {
           this.off('peers:del', delFn)

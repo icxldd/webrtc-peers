@@ -19,7 +19,6 @@ export default class DCManger {
       })
       .on('unpackover', (eventKey, data, desc) => {
         this.chat.onmessage && this.chat.onmessage({ eventKey, data, desc })
-        console.log('get', eventKey, data, desc)
         this.chat.emitLocal(eventKey, data, desc)
       })
   }
@@ -42,14 +41,16 @@ class DC {
       negotiated: true,
       id
     })
+    this.pc =pc
     this._dcEventHandler(this.dc)
+
     this.trans = new DataTrans()
     this.trans.on('packprogress', this._onpackprogress.bind(this)) // (blob,header)
   }
   async _onpackprogress(blob, header) {
     const buff = await reader.readAsArrayBuffer(blob)
     this.dc.send(buff)
-
+ 
     await new Promise(r => (this.lowBuffer = r))
 
     this.trans.packer.next()
@@ -60,7 +61,13 @@ class DC {
     dc.addEventListener('message', e => {
       this.trans.unpacker.unpack(e.data)
     })
-    dc.addEventListener('open', () => {})
+    dc.addEventListener('open', () => {
+      console.log(this.pc.sctp)
+      if(this.pc.sctp && this.pc.sctp.maxMessageSize) {
+        this.trans.setChunkSize(this.pc.sctp.maxMessageSize)
+      }
+      this.pc.sc
+    })
 
     dc.addEventListener('bufferedamountlow', () => {
       this.lowBuffer && this.lowBuffer()

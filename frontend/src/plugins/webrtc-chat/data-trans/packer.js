@@ -3,7 +3,7 @@ export default class Packer {
   _queue = []
   _isNoDataYield = 1
   chunkSize = 1024 * 64
-  constructor(chunkSize) {
+  setChunkSize(chunkSize) {
     this.chunkSize = chunkSize || this.chunkSize
   }
   next() {
@@ -73,6 +73,7 @@ export default class Packer {
         } else {
           headerExtens.sendSize += fragmentBlob.size
         }
+        console.log('progress')
         this.onprogress(fragmentBlob, headerExtens)
         const p = dataInfo.p
         p && p(headerExtens)

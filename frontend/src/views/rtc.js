@@ -22,7 +22,7 @@ export default class RTC extends EventEmitter {
    * 发出offer
    */
   createOffer(
-    config = { offerToReceiveAudio: true, offerToReceiveVideo: true }
+    config = { offerToReceiveAudio: false, offerToReceiveVideo: true }
   ) {
     return this.pc.createOffer(config).then(offer => {
       this.pc.setLocalDescription(new RTCSessionDescription(offer))

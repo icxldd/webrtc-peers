@@ -1,5 +1,7 @@
-import WebRTCChat from '@/plugins/webrtc-chat'
+
 import { EventEmitter } from '@/tools'
+import WebRTCChat from '@/plugins/webrtc-chat'
+
 export default class RTC extends EventEmitter {
   constructor({ config }) {
     super()
@@ -11,20 +13,13 @@ export default class RTC extends EventEmitter {
 
     this.pc = new RTCPeerConnection(config)
 
-    this.pc.onicecandidate = event => {
-      this.emitLocal('candidate', event.candidate)
-    }
-    this.chat = new WebRTCChat(this.pc)
-    this.emit = this.chat.emit.bind(this.chat)
   }
 
   /**
    * 发出offer
    */
-  createOffer(
-    config = { offerToReceiveAudio: false, offerToReceiveVideo: true }
-  ) {
-    return this.pc.createOffer(config).then(offer => {
+  createOffer() {
+    return this.pc.createOffer().then(offer => {
       this.pc.setLocalDescription(new RTCSessionDescription(offer))
       return offer
     })
@@ -51,5 +46,11 @@ export default class RTC extends EventEmitter {
     if (candidate) {
       this.pc.addIceCandidate(new RTCIceCandidate(candidate))
     }
+  }
+  createChat() {
+    return new WebRTCChat(this.pc)
+  }
+  addTrack(track, stream) {
+    
   }
 }

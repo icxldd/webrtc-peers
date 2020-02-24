@@ -44,7 +44,7 @@ export default class Packer {
         throw new Error('only 3 args are allowed: emit(string,data,desc)')
       }
 
-      const [eventKey, value, desc] = dataInfo.data
+      let [eventKey, value, desc] = dataInfo.data
 
       let valueBlob = new Blob()
       if (value) {
@@ -62,6 +62,8 @@ export default class Packer {
       const headerBuffer = setHeader(headerExtens)
 
       let blob = new Blob([headerBuffer, valueBlob])
+      valueBlob = null
+      
       headerExtens.sendSize = 0
       while (blob.size) {
         let fragmentBlob = blob.slice(0, this.chunkSize)
@@ -73,7 +75,6 @@ export default class Packer {
         } else {
           headerExtens.sendSize += fragmentBlob.size
         }
-        console.log('progress')
         this.onprogress(fragmentBlob, headerExtens)
         const p = dataInfo.p
         p && p(headerExtens)

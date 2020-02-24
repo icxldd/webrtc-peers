@@ -1,10 +1,10 @@
-import fs from 'fs'
+
 
 const rooms = {} //'uuid-key':{data} [{name:'xxx',  tips: 'xxx', videos:['id','id']}]
 
 const leave = function(roomid, socketid) {
   const room = rooms[roomid]
-  if (!room) return false
+  if (!room||!room.socketIds) return false
   console.log(room.socketIds)
   let index = room.socketIds.findIndex(val => val.id === socketid)
   if (index === -1) return false
@@ -16,16 +16,13 @@ const leave = function(roomid, socketid) {
   return true
 }
 
-let socketNum = 0
 
 export default ({ socket, io }) => {
-  fs.writeFileSync('socket-link-num', ++socketNum)
   socket.emit('rooms', rooms)
 
   socket.on('disconnect', function() {
     console.log('disconnect', socket.id)
     const keys = Object.keys(rooms)
-    fs.writeFileSync('socket-link-num', --socketNum)
 
     const broken = keys.some(it => {
       let haveLeave = leave(it, socket.id)
@@ -45,6 +42,7 @@ export default ({ socket, io }) => {
 
   socket.on('jion', roomid => {
     const room = rooms[roomid]
+    if(!room || !room.socketIds) return // 掉线后
     const find = room.socketIds.find(val => val.id === socket.id)
     if (find) return
     room.socketIds.push({ id: socket.id })

@@ -14,7 +14,7 @@ export default class {
     file = await fileReader({ data: file, type: 'blob' })
     const url = URL.createObjectURL(file)
     const hash = (Math.random() * 10 ** 17).toString()
-    let html = `<video id="video-js" data-setup="{}" hash="${hash}"  controls="controls" class="chat-video video-js" src="${url}"></video>`
+    let html = `<video  hash="${hash}"  controls class="chat-video" src="${url}"></video>`
     this.videos.push({
       hash,
       file

@@ -17,7 +17,7 @@
 			</div>
 		</transition>
 		<transition name="chat">
-			<div class="chat" v-show="peersLength && (isShowChat || !isMobile)">
+			<div class="chat" v-if="peersLength && (isShowChat || !isMobile)">
 				<nav v-if="isMobile">
 					<div class="back" @click="isShowChat = false">&#8595; 聊天</div>
 				</nav>
@@ -86,8 +86,8 @@ import RTCManager from '@/views/rtc-manager'
 import { isMobile, fileReader, fileLoad } from '@/tools'
 import socket from '@/socket'
 
-import Chat from '@/views/chat'
-const chat = new Chat()
+import EditorMessageManager from '@/plugins/editor-message-manager'
+const editorMessageManager = new EditorMessageManager()
 const rtcManager = new RTCManager()
 window.rtcManager = rtcManager
 export default {
@@ -139,18 +139,18 @@ export default {
 			const area = this.$refs.edit
 			const type = file.type
 			if (type.includes('image')) {
-				await chat.addImg(file, area)
+				await editorMessageManager.addImg(file, area)
 			} else if (['video/webm', 'video/ogg', 'video/mp4'].includes(type)) {
-				await chat.addVideo(file, area)
+				await editorMessageManager.addVideo(file, area)
 			} else {
-				await chat.addFile(file, area)
+				await editorMessageManager.addFile(file, area)
 			}
 		},
 
 		async fileChange(input) {
 			const file = input.files[0]
 			await this.addFile(file)
-
+			window.file= file
 			input.value = ''
 		},
 
@@ -194,7 +194,6 @@ export default {
 					}
 					chatMsg.total = e.total
 					chatMsg.sendSize = e.sendSize
-					console.log(e.sendSize)
 					chatMsg.percent = e.percent
 				})
 				// if (data.type === 'video') {
@@ -212,7 +211,7 @@ export default {
 
 		send() {
 			const area = document.querySelector('.chat-area')
-			const { text, files } = chat.filter(area)
+			const { text, files } = editorMessageManager.filter(area)
 			this.sendFiles(files)
 			this.sendText(text)
 

@@ -18,9 +18,12 @@ export default class DataChannel extends EventEmitter{
 	}
 	async _onpackprogress(blob, header) {
 		const buff = await reader.readAsArrayBuffer(blob)
-		this.dc.send(buff)
-
-		await new Promise(r => (this.lowBuffer = r))
+		this.dc.send(buff)	
+		
+		console.log(this.dc.bufferedAmount)
+		if(this.dc.bufferedAmount) {
+			await new Promise(r => (this.lowBuffer = r))
+		}
 
 		this.trans.packer.next()
 	}
@@ -38,7 +41,6 @@ export default class DataChannel extends EventEmitter{
 	}
 	_dcEventHandler(dc) {
 		dc.binaryType = 'arraybuffer'
-
 		dc.addEventListener('message', e => {
 			this.trans.unpacker.unpack(e.data)
 		})
@@ -49,6 +51,7 @@ export default class DataChannel extends EventEmitter{
 		})
 
 		dc.addEventListener('bufferedamountlow', () => {
+			console.log('low')
 			this.lowBuffer && this.lowBuffer()
 		})
 	}

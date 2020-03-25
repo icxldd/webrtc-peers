@@ -1,6 +1,6 @@
 import RTC from './rtc.js'
 import socket from '@/socket'
-import { EventEmitter, randomStr } from '@/tools'
+import { EventEmitter, randomStr, findDiff } from '@/tools'
 
 window.socket = socket
 const iceConfig = {
@@ -17,6 +17,7 @@ const iceConfig = {
 export default class RTCManager extends EventEmitter {
 	peers = []
 	streams = []
+	localMedia = {}
 	constructor() {
 		super()
 		socket.on('offer', data => this.onOffer(data))
@@ -68,10 +69,13 @@ export default class RTCManager extends EventEmitter {
 		peer.toSocketId = toSocketId
 
 		const chat = peer.createChat()
-		peer.dcs = [chat.createDataChannel('data'), chat.createDataChannel('file')]
+		peer.dcs = [
+			chat.createDataChannel('data'),
+			chat.createDataChannel('file'),
+			chat.createDataChannel('notice')
+		]
 		this.dcData.add(peer.dcs[0])
 		this.dcFile.add(peer.dcs[1])
-
 		this.addEventListenner(peer, toSocketId, roomid)
 		this.peers.push(peer)
 		this.emitLocal('peers:add', peer, this.peers)
@@ -170,6 +174,7 @@ export default class RTCManager extends EventEmitter {
 	}
 
 	remoteTrackHandler(e) {
+		console.log('remotetrack',e, e.stream)
 		this.addStream(e.streams[0])
 	}
 
@@ -181,11 +186,53 @@ export default class RTCManager extends EventEmitter {
 			}
 		} else if (state === 'closed') {
 			this.emitLocal('peer:del', peer)
+		} else if (state === 'disconnect') {
+			setTimeout(() => {
+				if (peer.pc.iceConnectionState === 'disconnect') {
+					this.emitLocal('peer:del', peer)
+				}
+			}, 10 * 1000)
 		}
 	}
 	setStreams(streams) {
 		this.streams = [...streams]
 		this.emitLocal('streams', this.streams)
+	}
+	/**
+	 *
+	 * @param {video, mic, desktopShare} config
+	 */
+	async setSelfMediaStatus(config) {
+		if (!config) return
+
+		const diffConfig = findDiff(this._selfMediaConfig || {}, config)
+		this._selfMediaConfig = config
+
+		if (diffConfig.video) {
+			const videoStream = await navigator.mediaDevices.getUserMedia({
+				video: diffConfig.video
+			})
+			videoStream.getVideoTracks()
+		} else if (diffConfig.video === false) {
+			this.localMediaStream
+		}
+
+		if (diffConfig.audio) {
+			const audioStream = await navigator.mediaDevices.getUserMedia({
+				audio: diffConfig.audio
+			})
+			audioStream.getAudioTracks().forEach(track => {
+				stream.addTrack(track)
+			})
+		}
+		if (diffConfig.desktopShare) {
+			this.localMediaStream.desktopShare = await navigator.mediaDevices
+		}
+	}
+
+	getLocalSteam(config) {
+		if (type === 'video') {
+		}
 	}
 
 	close() {

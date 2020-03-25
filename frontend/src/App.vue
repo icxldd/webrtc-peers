@@ -1,18 +1,29 @@
 <template>
 	<div :class="['web-rtc', { 'rtc-mobile': isMobile }]">
-		<Rooms
-			@create-room="start"
-			@show-video="isShowVideo = true"
-			@call="call"
-		></Rooms>
+		<Rooms @create-room="start" @call="call"></Rooms>
 		<transition name="play">
-			<div class="play" v-if="isShowVideo">
+			<div class="play">
 				<nav v-if="isMobile">
-					<div class="back" @click="isShowVideo = false">&lt; 返回房间</div>
+					<!-- <div class="back" @click="isShowVideo = false">&lt; 返回房间</div> -->
 					<div class="back" @click="isShowChat = !isShowChat">&#8593; 聊天</div>
 				</nav>
-				<div v-for="(stream, index) in streams" :key="index">
-					<video ref="video" class="rtc-video" controls autoplay></video>
+				<videos :streams="streams"> </videos>
+				<div class="self-btns">
+					<i
+						class="iconfont icon-mic"
+						:class="{ active: slefVideoBtnStatus.audio }"
+						@click="selfMediaStatusChange('audio')"
+					></i>
+					<i
+						class="iconfont icon-video"
+						:class="{ active: slefVideoBtnStatus.video }"
+						@click="selfMediaStatusChange('video')"
+					></i>
+					<i
+						class="iconfont icon-desktopshare"
+						:class="{ active: slefVideoBtnStatus.desktopShare }"
+						@click="selfMediaStatusChange('desktopShare')"
+					></i>
 				</div>
 			</div>
 		</transition>
@@ -58,7 +69,7 @@
 						</div>
 					</li>
 				</ul>
-				<div class="chat-content">
+				<div class="edit-content">
 					<img src="~assets/folder.svg" class="file" alt="选取文件" />
 					<input
 						type="file"
@@ -84,24 +95,31 @@
 import Rooms from '@/views/rooms'
 import RTCManager from '@/views/rtc-manager'
 import { isMobile, fileReader, fileLoad } from '@/tools'
+import Videos from '@/views/videos'
+import SelfVideoBtns from '@/views/self-video-btns'
 import socket from '@/socket'
 
 import EditorMessageManager from '@/plugins/editor-message-manager'
 const editorMessageManager = new EditorMessageManager()
 const rtcManager = new RTCManager()
+
 window.rtcManager = rtcManager
 export default {
+	components: {
+		Rooms,
+		Videos,
+		SelfVideoBtns
+	},
 	data() {
 		return {
 			streams: [],
-			isShowVideo: false, //电脑端不会手动修改为false
 			/**
 			 * {pendingSize, size,isSelf, user,fileName}
-			 *
 			 */
 			chats: [],
 			isShowChat: false,
-			peersLength: 0
+			peersLength: 0,
+			slefVideoBtnStatus: { audio: false, desktopShare: false, video: false }
 		}
 	},
 	computed: {
@@ -109,10 +127,11 @@ export default {
 			return isMobile
 		}
 	},
-	components: {
-		Rooms
-	},
+
 	methods: {
+		selfMediaStatusChange(type) {
+			rtcManager.setSelfMediaStatus({...this.slefVideoBtnStatus, [type]:!this.slefVideoBtnStatus[type]})
+		},
 		start(data) {
 			rtcManager.createRoom(data)
 		},
@@ -121,13 +140,13 @@ export default {
 			rtcManager.call(picked)
 		},
 		async refreshVideo(value) {
-			await new Promise(this.$nextTick)
-			const videos = this.$refs.video
-			if (videos) {
-				videos.forEach(
-					(it, index) => (it.srcObject = rtcManager.streams[index])
-				)
-			}
+			// await new Promise(this.$nextTick)
+			// const videos = this.$refs.video
+			// if (videos) {
+			// 	videos.forEach(
+			// 		(it, index) => (it.srcObject = rtcManager.streams[index])
+			// 	)
+			// }
 		},
 
 		async drop(e) {
@@ -150,7 +169,7 @@ export default {
 		async fileChange(input) {
 			const file = input.files[0]
 			await this.addFile(file)
-			window.file= file
+			window.file = file
 			input.value = ''
 		},
 
@@ -184,14 +203,14 @@ export default {
 					total: 0,
 					sendSize: 0
 				}
+
+				this.chats.push(chatMsg)
+
 				//{pendingSize, size,isSelf, user,fileName}
 				rtcManager.dcFile.emit('chat-file', file, {
 					...data,
 					user: socket.id
 				})(e => {
-					if (!this.chats.some(it => it === chatMsg)) {
-						this.chats.push(chatMsg)
-					}
 					chatMsg.total = e.total
 					chatMsg.sendSize = e.sendSize
 					chatMsg.percent = e.percent
@@ -206,8 +225,6 @@ export default {
 		getVideo(it) {
 			console.log('getvideo', it)
 		},
-		getImage() {},
-		getText() {},
 
 		send() {
 			const area = document.querySelector('.chat-area')
@@ -251,7 +268,6 @@ export default {
 		_streamChange(value) {
 			window.streams = value
 			this.streams = value
-			this.isShowVideo = true
 			this.refreshVideo()
 		},
 
@@ -286,7 +302,7 @@ export default {
 			// .on('chat-img:progress', this.getChatFileProgress)
 			// .on('chat:progress', this._getchatprogress)
 			.on('peers:change', this._peersChange)
-      
+
 		rtcManager.dcData.on('chat', this.getChatText)
 		rtcManager.dcFile.on('chat-file', this.getFile)
 		rtcManager.dcFile.on('chat-file:progress', this.getChatFileProgress)
@@ -332,7 +348,7 @@ export default {
 			height: auto;
 			flex: 3 1 200px;
 		}
-		.chat-content {
+		.edit-content {
 			flex: 1;
 		}
 	}
@@ -365,8 +381,9 @@ export default {
 	max-width: 1553px;
 	margin: 0 auto;
 	.chat {
-		padding: 35px 0;
 		grid-column: 3/4;
+		display: flex;
+		flex-direction: column;
 		img {
 			width: 200px;
 		}
@@ -411,7 +428,7 @@ export default {
 		}
 		.chat-area {
 			width: 100%;
-			height: 100px;
+			height: calc(100% - 80px);
 			outline: none;
 			border: none;
 			box-sizing: border-box;
@@ -422,10 +439,12 @@ export default {
 			word-break: break-all;
 		}
 
-		.chat-content {
+		.edit-content {
 			border: 1px solid #ccc;
 			border-top: none;
 			position: relative;
+			flex: 0.5 1 200px;
+			max-height: 250px;
 			.button-div {
 				text-align: right;
 				padding: 5px;
@@ -441,7 +460,7 @@ export default {
 			}
 		}
 		.content {
-			height: 400px;
+			flex: 1 1 400px;
 			border: 1px solid #ccc;
 			padding: 4px 10px;
 			overflow: auto;
@@ -478,12 +497,19 @@ export default {
 	padding: 40px;
 	display: grid;
 	grid-template-columns: 200px 4fr 400px;
-
+	grid-gap: 0 10px;
 	.play {
-		padding: 35px 10px;
 		display: flex;
 		flex-wrap: wrap;
 		align-content: flex-start;
+		min-width: 460px;
+		border: 1px solid #ccc;
+		.self-btns {
+			position: absolute;
+			bottom: 0;
+			width: 100%;
+			height: 36px;
+		}
 		nav {
 			display: flex;
 			justify-content: space-between;

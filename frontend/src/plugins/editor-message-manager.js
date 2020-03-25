@@ -6,8 +6,7 @@ export default class {
   autofiles = [] // 非video，img,的文件
   async addImg(file, area) {
     const dataurl = await fileReader({ data: file })
-    const hash = (Math.random() * 10 ** 17).toString()
-    const img = `<div class="chat-img-div" hash="${hash}"><img class="chat-img"  src="${dataurl}" ><div>`
+    const img = `<img class="chat-img"  src="${dataurl}" >`
     area.innerHTML += img
   }
   async addVideo(file, area) {
@@ -25,7 +24,10 @@ export default class {
   async addFile(file, area) {
     const name = file.name
     const hash = (Math.random() * 10 ** 17).toString()
-    file = await fileReader({ data: file, type: 'blob' })
+    console.time('111')
+    console.log(file)
+    // file = await fileReader({ data: file, type: 'blob' })
+    console.timeEnd('111')
     let html = `<div hash="${hash}"><i class="v-icon-document file-icon"></i><span class="file-name"> ${name}</span></div>`
     this.autofiles.push({
       file,

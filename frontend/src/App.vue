@@ -101,7 +101,6 @@ import Rooms from '@/views/rooms'
 import RTCManager from '@/views/rtc-manager'
 import { isMobile, fileReader, fileLoad } from '@/tools'
 import Videos from '@/views/videos'
-import SelfVideoBtns from '@/views/self-video-btns'
 import socket from '@/socket'
 
 import EditorMessageManager from '@/plugins/editor-message-manager'
@@ -113,7 +112,6 @@ export default {
 	components: {
 		Rooms,
 		Videos,
-		SelfVideoBtns
 	},
 	data() {
 		return {
@@ -124,18 +122,21 @@ export default {
 			chats: [],
 			isShowChat: false,
 			peersLength: 0,
-			slefVideoBtnStatus: { audio: false, desktopShare: false, video: false }
+			slefVideoBtnStatus: { audio: false, desktopShare: false, video: false },
 		}
 	},
 	computed: {
 		isMobile() {
 			return isMobile
-		}
+		},
 	},
 
 	methods: {
 		selfMediaStatusChange(type) {
-			rtcManager.setSelfMediaStatus({...this.slefVideoBtnStatus, [type]:!this.slefVideoBtnStatus[type]})
+			rtcManager.setSelfMediaStatus({
+				...this.slefVideoBtnStatus,
+				[type]: !this.slefVideoBtnStatus[type],
+			})
 		},
 		start(data) {
 			rtcManager.createRoom(data)
@@ -144,7 +145,6 @@ export default {
 		call(picked) {
 			rtcManager.call(picked)
 		},
-
 
 		async drop(e) {
 			const file = e.dataTransfer.files[0]
@@ -175,7 +175,7 @@ export default {
 			const sendData = {
 				msg: text,
 				user: socket.id,
-				type: 'text'
+				type: 'text',
 			}
 			rtcManager.dcData.emit('chat', sendData)
 
@@ -184,7 +184,7 @@ export default {
 			area.innerHTML = ''
 		},
 		async sendFiles(files) {
-			files.forEach(it => {
+			files.forEach((it) => {
 				/*
         *       type: 'file',
         file: it.file,
@@ -198,7 +198,7 @@ export default {
 					isSelf: true,
 					percent: 0,
 					total: 0,
-					sendSize: 0
+					sendSize: 0,
 				}
 
 				this.chats.push(chatMsg)
@@ -206,8 +206,8 @@ export default {
 				//{pendingSize, size,isSelf, user,fileName}
 				rtcManager.dcFile.emit('chat-file', file, {
 					...data,
-					user: socket.id
-				})(e => {
+					user: socket.id,
+				})((e) => {
 					chatMsg.total = e.total
 					chatMsg.sendSize = e.sendSize
 					chatMsg.percent = e.percent
@@ -272,7 +272,7 @@ export default {
 		},
 		getChatFileProgress(e) {
 			//{pendingSize, size,isSelf, user,fileName}
-			let chat = this.chats.find(it => it.hash === e.desc.hash)
+			let chat = this.chats.find((it) => it.hash === e.desc.hash)
 
 			if (!chat) {
 				chat = { ...e.desc, percent: e.percent }
@@ -288,7 +288,7 @@ export default {
 			//   const video = document.querySelector(`[hash="${chat.hash}"]`)
 			//   video.src = URL.createObjectURL(new Blob([chat.file]))
 			// }
-		}
+		},
 	},
 	created() {
 		rtcManager
@@ -302,7 +302,7 @@ export default {
 		rtcManager.dcData.on('chat', this.getChatText)
 		rtcManager.dcFile.on('chat-file', this.getFile)
 		rtcManager.dcFile.on('chat-file:progress', this.getChatFileProgress)
-	}
+	},
 }
 </script>
 

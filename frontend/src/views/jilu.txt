@@ -1,0 +1,6 @@
+one streamTrack.stop() 
+other RemoteMediaStream.getTracks()[n].onmute() 
+
+
+one removeTrack()
+other pc.onremoveStream() & RemoteMediaStream.onremovetrack() 

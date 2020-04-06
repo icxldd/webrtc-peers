@@ -3,31 +3,36 @@ import socket from '@/socket'
 import { EventEmitter, randomStr, findDiff } from '@/tools'
 
 window.socket = socket
+
 const iceConfig = {
 	iceServers: [
 		{ urls: ['stun:stun.freeswitch.org', 'stun:stun.ekiga.net'] },
 		{
 			urls: 'turn:gusheng123.top:3478',
 			credential: 'g468291375',
-			username: '605661239@qq.com'
-		}
-	]
+			username: '605661239@qq.com',
+		},
+	],
 }
 
 export default class RTCManager extends EventEmitter {
 	peers = []
 	streams = []
-	localMedia = {}
+	localMedia = {
+		video: { config: false, stream: null },
+		audio: { config: false, stream: null },
+		desktopShare: { config: false, stream: null },
+	}
 	constructor() {
 		super()
-		socket.on('offer', data => this.onOffer(data))
-		socket.on('answer', data => this.setAnswer(data))
-		socket.on('candidate', data => this.setRemoteCandidate(data))
+		socket.on('offer', (data) => this.onOffer(data))
+		socket.on('answer', (data) => this.setAnswer(data))
+		socket.on('candidate', (data) => this.setRemoteCandidate(data))
 		this.dcFile = new MessageManager('file')
 		this.dcData = new MessageManager('data')
-		this.on('peer:del', peer => {
+		this.on('peer:del', (peer) => {
 			peer.dcs &&
-				peer.dcs.forEach(dc => this.dcFile.remove(dc), this.dcData.remove(dc))
+				peer.dcs.forEach((dc) => this.dcFile.remove(dc), this.dcData.remove(dc))
 		})
 		// socket.on('broken', data => this.onSomeOneBroken(data))
 	}
@@ -38,24 +43,24 @@ export default class RTCManager extends EventEmitter {
 	}
 
 	async addEventListenner(peer, toid, roomid) {
-		peer.pc.onicecandidate = e => this.sendCandidate(peer, toid, e.candidate)
-		peer.pc.addEventListener('iceconnectionstatechange', event => {
+		peer.pc.onicecandidate = (e) => this.sendCandidate(peer, toid, e.candidate)
+		peer.pc.addEventListener('iceconnectionstatechange', (event) => {
 			console.log(peer.pc.iceConnectionState)
 			if (roomid) {
 				this.onStateChange({ peer, roomid })
 			}
 		})
-		peer.pc.ontrack = track => this.remoteTrackHandler(track)
+		peer.pc.ontrack = (track) => this.remoteTrackHandler(track)
 
 		setTimeout(() => {
-			peer.pc.addEventListener('negotiationneeded', e => {
+			peer.pc.addEventListener('negotiationneeded', (e) => {
 				console.log('negotiationneeded', e)
-				peer.createOffer().then(offer => {
+				peer.createOffer().then((offer) => {
 					socket.emit('offer', {
 						from: socket.id,
 						to: toid,
 						id: peer.id,
-						offer
+						offer,
 					})
 				})
 			})
@@ -72,7 +77,7 @@ export default class RTCManager extends EventEmitter {
 		peer.dcs = [
 			chat.createDataChannel('data'),
 			chat.createDataChannel('file'),
-			chat.createDataChannel('notice')
+			chat.createDataChannel('notice'),
 		]
 		this.dcData.add(peer.dcs[0])
 		this.dcFile.add(peer.dcs[1])
@@ -89,12 +94,12 @@ export default class RTCManager extends EventEmitter {
 			peer = this.createPeer({ id: data.id, toSocketId: data.from })
 		}
 
-		peer.setOffer(data.offer).then(answer =>
+		peer.setOffer(data.offer).then((answer) =>
 			socket.emit('answer', {
 				answer,
 				from: socket.id,
 				to: data.from,
-				id: data.id
+				id: data.id,
 			})
 		)
 	}
@@ -103,9 +108,9 @@ export default class RTCManager extends EventEmitter {
 		const peer = this.createPeer({
 			id: randomStr(),
 			toSocketId: toid,
-			roomid
+			roomid,
 		})
-		peer.createOffer().then(offer => {
+		peer.createOffer().then((offer) => {
 			socket.emit('offer', { from: socket.id, to: toid, id: peer.id, offer })
 		})
 	}
@@ -113,7 +118,7 @@ export default class RTCManager extends EventEmitter {
 	async call(picked) {
 		this.roomid = picked.roomid
 
-		picked.socketIds.forEach(it => {
+		picked.socketIds.forEach((it) => {
 			this._call(it.id, picked.roomid)
 		})
 	}
@@ -138,12 +143,14 @@ export default class RTCManager extends EventEmitter {
 	}
 
 	to(id) {
-		return this.peers.find(it => it.id === id)
+		return this.peers.find((it) => it.id === id)
 	}
 
 	sendLocalStream(peer, localStream) {
 		if (!localStream) return
-		localStream.getTracks().forEach(track => peer.pc.addTrack(track))
+		localStream
+			.getTracks()
+			.forEach((track) => peer.pc.addTrack(track, localStream))
 	}
 
 	sendCandidate(peer, toSockedId, candidate) {
@@ -151,7 +158,7 @@ export default class RTCManager extends EventEmitter {
 			candidate,
 			to: toSockedId,
 			from: socket.id,
-			id: peer.id
+			id: peer.id,
 		})
 	}
 
@@ -164,17 +171,20 @@ export default class RTCManager extends EventEmitter {
 			stream = this.localStream.clone()
 			const audiotrack = stream.getAudioTracks()
 			// 自己端的streams
-			audiotrack.forEach(it => stream.removeTrack(it))
+			audiotrack.forEach((it) => stream.removeTrack(it))
 			stream.isSelf = true
 		}
 
-		if (this.streams.some(it => it.id === stream.id)) return
+		if (this.streams.some((it) => it.id === stream.id)) return
 		this.streams.push(stream)
 		this.setStreams(this.streams)
+		this.peers.forEach((peer) => {
+			this.sendLocalStream(peer, this.localStream)
+		})
 	}
 
 	remoteTrackHandler(e) {
-		console.log('remotetrack',e, e.stream)
+		console.log('remotetrack', e, e.streams)
 		this.addStream(e.streams[0])
 	}
 
@@ -200,34 +210,60 @@ export default class RTCManager extends EventEmitter {
 	}
 	/**
 	 *
-	 * @param {video, mic, desktopShare} config
+	 * @param {video, audio, desktopShare} config
 	 */
+
 	async setSelfMediaStatus(config) {
 		if (!config) return
 
-		const diffConfig = findDiff(this._selfMediaConfig || {}, config)
-		this._selfMediaConfig = config
+		// const videoStream = await navigator.mediaDevices.getUserMedia({
+		// 		video: true,
+		// })
+		this.addStream()
 
-		if (diffConfig.video) {
-			const videoStream = await navigator.mediaDevices.getUserMedia({
-				video: diffConfig.video
-			})
-			videoStream.getVideoTracks()
-		} else if (diffConfig.video === false) {
-			this.localMediaStream
-		}
+		// if (
+		// 	JSON.stringify(config.video) !==
+		// 	JSON.stringify(this.localMedia.video.config)
+		// ) {
+		// 	if (!config.video) {
+		// 		this.peers.forEach((peer) => {
+		// 			this.localMedia.video.stream.getVideoTracks().forEach((t) => {
+		// 				peer.pc.removeTrack(t)
+		// 			})
+		// 		})
 
-		if (diffConfig.audio) {
-			const audioStream = await navigator.mediaDevices.getUserMedia({
-				audio: diffConfig.audio
-			})
-			audioStream.getAudioTracks().forEach(track => {
-				stream.addTrack(track)
-			})
-		}
-		if (diffConfig.desktopShare) {
-			this.localMediaStream.desktopShare = await navigator.mediaDevices
-		}
+
+		// 		this.localMedia.video.stream
+		// 	} else {
+		// 	}
+		// 	if (config.video && !this._selfMediaConfig.video) {
+		// 		// navigator.mediaDevices.getUserMedia({ video: })
+		// 	}
+		// }
+
+		// const diffConfig = findDiff(this._selfMediaConfig || {}, config)
+		// this._selfMediaConfig = config
+
+		// if (diffConfig.video) {
+		// 	const videoStream = await navigator.mediaDevices.getUserMedia({
+		// 		video: diffConfig.video,
+		// 	})
+		// 	videoStream.getVideoTracks()
+		// } else if (diffConfig.video === false) {
+		// 	this.localMediaStream
+		// }
+
+		// if (diffConfig.audio) {
+		// 	const audioStream = await navigator.mediaDevices.getUserMedia({
+		// 		audio: diffConfig.audio,
+		// 	})
+		// 	audioStream.getAudioTracks().forEach((track) => {
+		// 		stream.addTrack(track)
+		// 	})
+		// }
+		// if (diffConfig.desktopShare) {
+		// 	this.localMediaStream.desktopShare = await navigator.mediaDevices
+		// }
 	}
 
 	getLocalSteam(config) {
@@ -249,32 +285,32 @@ class MessageManager extends EventEmitter {
 		this.emitLocal = this.emitLocal.bind(this)
 	}
 	add(dc) {
-		dc.onmessage = e => this.emitLocal(e.eventKey, e.data, e.desc)
-		dc.onprogress = e => {
+		dc.onmessage = (e) => this.emitLocal(e.eventKey, e.data, e.desc)
+		dc.onprogress = (e) => {
 			e.percent = e.getBytes / e.total
 			this.emitLocal(e.eventKey + ':progress', e)
 		}
 		this.dcs.push(dc)
 	}
 	remove(dc) {
-		this.dcs = this.dcs.filter(it => it !== dc)
+		this.dcs = this.dcs.filter((it) => it !== dc)
 		this.emitLocal('dc:del', dc)
 	}
 
 	emit(key, data, desc) {
 		const map = new Map()
-		const delFn = dc => {
+		const delFn = (dc) => {
 			map.delete(dc)
 		}
 		this.on('dc:del', delFn)
 		let p
-		this.dcs.forEach(dc => {
+		this.dcs.forEach((dc) => {
 			map.set(dc, 0)
 			dc.emit(
 				key,
 				data,
 				desc
-			)(e => {
+			)((e) => {
 				map.set(dc, e.sendSize)
 				const allSendSize = [...map.values()].reduce((p, n) => p + n, 0)
 				const percent = allSendSize / (e.total * map.size)
@@ -287,12 +323,13 @@ class MessageManager extends EventEmitter {
 						...e,
 						peersCount: map.size,
 						percent: allSendSize / (e.total * map.size),
-						completedCount: [...map.values()].map(it => it === e.total).length
+						completedCount: [...map.values()].map((it) => it === e.total)
+							.length,
 					})
 			})
 		})
 
-		return function(progress) {
+		return function (progress) {
 			if (typeof progress !== 'function') throw 'progress need function'
 			p = progress
 		}

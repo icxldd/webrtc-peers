@@ -24,6 +24,11 @@
 						:class="{ active: slefVideoBtnStatus.desktopShare }"
 						@click="selfMediaStatusChange('desktopShare')"
 					></i>
+					<i
+						class="iconfont icon-camera-switch"
+						:class="{ active: slefVideoBtnStatus.cameraSwitch }"
+						@click="selfMediaStatusChange('cameraSwitch')"
+					></i>
 				</div>
 			</div>
 		</transition>
@@ -139,15 +144,7 @@ export default {
 		call(picked) {
 			rtcManager.call(picked)
 		},
-		async refreshVideo(value) {
-			// await new Promise(this.$nextTick)
-			// const videos = this.$refs.video
-			// if (videos) {
-			// 	videos.forEach(
-			// 		(it, index) => (it.srcObject = rtcManager.streams[index])
-			// 	)
-			// }
-		},
+
 
 		async drop(e) {
 			const file = e.dataTransfer.files[0]
@@ -268,7 +265,6 @@ export default {
 		_streamChange(value) {
 			window.streams = value
 			this.streams = value
-			this.refreshVideo()
 		},
 
 		_peersChange(peers) {

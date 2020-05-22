@@ -122,7 +122,7 @@ export default {
 			chats: [],
 			isShowChat: false,
 			peersLength: 0,
-			slefVideoBtnStatus: { audio: false, desktopShare: false, video: false },
+			slefVideoBtnStatus: { audio: false, desktopShare: false, video: false,cameraSwitch:false },
 		}
 	},
 	computed: {
@@ -133,6 +133,7 @@ export default {
 
 	methods: {
 		selfMediaStatusChange(type) {
+			console.log(type)
 			rtcManager.setSelfMediaStatus({
 				...this.slefVideoBtnStatus,
 				[type]: !this.slefVideoBtnStatus[type],

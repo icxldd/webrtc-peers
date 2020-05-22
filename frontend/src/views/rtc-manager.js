@@ -19,9 +19,9 @@ export default class RTCManager extends EventEmitter {
 	peers = []
 	streams = []
 	localMedia = {
-		video: { config: false, stream: null },
-		audio: { config: false, stream: null },
-		desktopShare: { config: false, stream: null },
+		video: false,
+		audio: false,
+		desktopShare: false,
 	}
 	constructor() {
 		super()
@@ -214,12 +214,40 @@ export default class RTCManager extends EventEmitter {
 	 */
 
 	async setSelfMediaStatus(config) {
+		console.log(config)
 		if (!config) return
+
+		const deal = (type, config) => {
+			for (let peer of this.peers) {
+				const stream =	peer.pc.getLocalSteam()
+				stream.getVideoTracks
+				// peer.pc.removeTrack()
+			}
+			if (!config) return
+			if (type === 'desktopShare') {
+				navigator.mediaDevices.getDisplayMedia().then((stream) => {})
+			}
+			for (let peer of this.peers) {
+				navigator.mediaDevices.getUserMedia({})
+			}
+		}
+
+		if (config.video !== this.localMedia.video) {
+			deal('video', config.video).then((res) => {
+				this.localMedia.video = config.video
+			})
+		}
+		if (config.audio !== this.localMedia.audio) {
+			deal('audio', config.audio)
+		}
+		if (config.desktopShare !== this.localMedia.desktopShare) {
+			deal('desktopShare', config.desktopShare)
+		}
 
 		// const videoStream = await navigator.mediaDevices.getUserMedia({
 		// 		video: true,
 		// })
-		this.addStream()
+		// this.addStream()
 
 		// if (
 		// 	JSON.stringify(config.video) !==
@@ -231,7 +259,6 @@ export default class RTCManager extends EventEmitter {
 		// 				peer.pc.removeTrack(t)
 		// 			})
 		// 		})
-
 
 		// 		this.localMedia.video.stream
 		// 	} else {
@@ -329,7 +356,7 @@ class MessageManager extends EventEmitter {
 			})
 		})
 
-		return function (progress) {
+		return function(progress) {
 			if (typeof progress !== 'function') throw 'progress need function'
 			p = progress
 		}

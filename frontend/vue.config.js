@@ -1,25 +1,27 @@
-const interfaces = require('os').networkInterfaces(); // 在开发环境中获取局域网中的本机iP地址
-let IPAddress = '';
-for(var devName in interfaces){  
-  var iface = interfaces[devName];  
-  for(var i=0;i<iface.length;i++){  
-        var alias = iface[i];  
-        if(alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal){  
-          IPAddress = alias.address;  
-        }  
-  }  
-} 
-const webpack = require('webpack')
-module.exports = {
-  configureWebpack: {
-    resolve: {
-      extensions: ['.js', '.vue', '.scss', '.css'],
-      alias: {
-        assets: '@/assets'
+const webpack = require("webpack")
+function getIPAdress() {
+  let localIPAddress = ''
+  let interfaces = require('os').networkInterfaces()
+  for (let devName in interfaces) {
+    let iface = interfaces[devName]
+    for (let i = 0; i < iface.length; i++) {
+      let alias = iface[i]
+      if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
+        localIPAddress = alias.address
       }
-    },
-    plugins:[new webpack.DefinePlugin({
-      IPAddress:JSON.stringify(IPAddress)
-    })]
+    }
   }
+  return localIPAddress
+}
+
+module.exports = {
+  chainWebpack(config){
+
+    config.plugin('define').tap(args => {
+      args[0]['IP'] = process.env.NODE_ENV === 'development'?  JSON.stringify('http://'+getIPAdress()+':9000') : 'https://gusheng123.top'
+      return args
+    })
+    config.resolve.alias.set('assets', '@/assets')
+    config.resolve.extensions.add('.css',).add('.scss')
+  },
 }

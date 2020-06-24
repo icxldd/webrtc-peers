@@ -1,0 +1,79 @@
+{
+  "id": "1665021",
+  "name": "webrtc-peers",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "3844272",
+      "name": "icon-桌面共享",
+      "font_class": "desktopshare",
+      "unicode": "e72e",
+      "unicode_decimal": 59182
+    },
+    {
+      "icon_id": "7190295",
+      "name": "voice",
+      "font_class": "voice",
+      "unicode": "e6a7",
+      "unicode_decimal": 59047
+    },
+    {
+      "icon_id": "1762321",
+      "name": "voice",
+      "font_class": "speaking",
+      "unicode": "e61c",
+      "unicode_decimal": 58908
+    },
+    {
+      "icon_id": "11686787",
+      "name": "close",
+      "font_class": "close",
+      "unicode": "e673",
+      "unicode_decimal": 58995
+    },
+    {
+      "icon_id": "11686832",
+      "name": "record_off",
+      "font_class": "record_off",
+      "unicode": "e67b",
+      "unicode_decimal": 59003
+    },
+    {
+      "icon_id": "11686833",
+      "name": "record_on",
+      "font_class": "record_on",
+      "unicode": "e67c",
+      "unicode_decimal": 59004
+    },
+    {
+      "icon_id": "11686834",
+      "name": "cameraSwitch",
+      "font_class": "camera-switch",
+      "unicode": "e67d",
+      "unicode_decimal": 59005
+    },
+    {
+      "icon_id": "11686850",
+      "name": "conference",
+      "font_class": "conference",
+      "unicode": "e681",
+      "unicode_decimal": 59009
+    },
+    {
+      "icon_id": "372213",
+      "name": "cc-mic",
+      "font_class": "mic",
+      "unicode": "e675",
+      "unicode_decimal": 58997
+    },
+    {
+      "icon_id": "9600885",
+      "name": "member_list_video_on",
+      "font_class": "video",
+      "unicode": "e648",
+      "unicode_decimal": 58952
+    }
+  ]
+}

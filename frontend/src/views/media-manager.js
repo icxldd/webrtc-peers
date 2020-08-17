@@ -1,4 +1,12 @@
-export function removeTrack (pc, type) {
-  const stream = pc.getLocalSteam()
-  pc.removeTrack(t)
+export default class MediaManager {
+	audio = null
+	cameraSwitch = null
+	desktopShare = null
+	video = null
+	constructor(pc) {
+		this.pc = pc
+	}
+	setOption(option) {
+    
+  }
 }

@@ -247,6 +247,7 @@ export default {
 		},
 		async getChatText(chat) {
 			this.chats.push(chat)
+			
 			await new Promise(this.$nextTick)
 			const ul = this.$refs.chat
 			ul.scrollTop = ul.scrollHeight

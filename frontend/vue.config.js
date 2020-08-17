@@ -18,7 +18,7 @@ module.exports = {
   chainWebpack(config){
 
     config.plugin('define').tap(args => {
-      args[0]['IP'] = process.env.NODE_ENV === 'development'?  JSON.stringify('http://'+getIPAdress()+':9000') : 'https://gusheng123.top'
+      args[0]['IP'] = process.env.NODE_ENV === 'development'?  JSON.stringify('http://'+getIPAdress()+':9000') : JSON.stringify('https://gusheng123.top')
       return args
     })
     config.resolve.alias.set('assets', '@/assets')

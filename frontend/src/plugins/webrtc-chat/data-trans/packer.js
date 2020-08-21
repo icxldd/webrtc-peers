@@ -45,7 +45,7 @@ export default class Packer {
       }
 
       let [eventKey, value, desc] = dataInfo.data
-
+      
       let valueBlob = new Blob()
       if (value) {
         valueBlob = toBlob(value)

@@ -1,6 +1,6 @@
 import Datachannel from './datachannel'
 import { EventEmitter } from './tool'
-export default class WebRTCChart extends EventEmitter{
+export default class WebRTCChat extends EventEmitter{
 	id = 0
 	dataChannels = {}
 	constructor(pc) {

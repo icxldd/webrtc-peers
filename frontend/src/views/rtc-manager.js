@@ -18,10 +18,12 @@ const iceConfig = {
 export default class RTCManager extends EventEmitter {
 	peers = []
 	streams = []
+	localStreams = []
+	remoteStreams = []
 	localMedia = {
-		video: false,
-		audio: false,
-		desktopShare: false,
+		video: {},
+		audio: {},
+		desktopShare: {},
 	}
 	constructor() {
 		super()
@@ -31,7 +33,7 @@ export default class RTCManager extends EventEmitter {
 		this.dcFile = new MessageManager('file')
 		this.dcData = new MessageManager('data')
 		this.on('peer:del', peer => {
-			peer.dcs && peer.dcs.forEach(dc => this.dcFile.remove(dc), this.dcData.remove(dc))
+			peer.dcs && peer.dcs.forEach(dc => this.dcFile.removeDc(dc), this.dcData.removeDc(dc))
 		})
 		// socket.on('broken', data => this.onSomeOneBroken(data))
 	}
@@ -45,9 +47,7 @@ export default class RTCManager extends EventEmitter {
 		peer.pc.onicecandidate = e => this.sendCandidate(peer, toid, e.candidate)
 		peer.pc.addEventListener('iceconnectionstatechange', event => {
 			console.log(peer.pc.iceConnectionState)
-			if (roomid) {
-				this.onStateChange({ peer, roomid })
-			}
+			this.onStateChange({ peer, roomid })
 		})
 		peer.pc.ontrack = track => this.remoteTrackHandler(track)
 
@@ -68,8 +68,6 @@ export default class RTCManager extends EventEmitter {
 	createPeer({ toSocketId, id, roomid }) {
 		const peer = new RTC({ config: iceConfig })
 		peer.id = id
-		window.peer = peer
-
 		peer.toSocketId = toSocketId
 
 		const chat = peer.createChat()
@@ -81,16 +79,17 @@ export default class RTCManager extends EventEmitter {
 		this.dcData.add(peer.dcs[0])
 		this.dcFile.add(peer.dcs[1])
 		this.addEventListenner(peer, toSocketId, roomid)
-		this.peers.push(peer)
-		this.emitLocal('peers:add', peer, this.peers)
-		this.emitLocal('peers:change', this.peers)
+
 		return peer
 	}
-
 	onOffer(data) {
 		let peer = this.to(data.id)
 		if (!peer) {
 			peer = this.createPeer({ id: data.id, toSocketId: data.from })
+			window.peer = peer
+			this.peers.push(peer)
+			this.emitLocal('peers:add', peer, this.peers)
+			this.emitLocal('peers:change', this.peers)
 		}
 
 		peer.setOffer(data.offer).then(answer =>
@@ -109,6 +108,14 @@ export default class RTCManager extends EventEmitter {
 			toSocketId: toid,
 			roomid,
 		})
+		if(!peer) {
+			debugger
+			alert('per为空')
+		}
+		this.peers.push(peer)
+		window.peer = peer
+		this.emitLocal('peers:add', peer, this.peers)
+		this.emitLocal('peers:change', this.peers)
 		peer.createOffer().then(offer => {
 			socket.emit('offer', { from: socket.id, to: toid, id: peer.id, offer })
 		})
@@ -134,20 +141,8 @@ export default class RTCManager extends EventEmitter {
 		}
 	}
 
-	getUserMedia(config = { video: { with: 320, height: 480 }, audio: true }) {
-		if (location.protocol === 'https:' || location.hostname === 'localhost') {
-			return navigator.mediaDevices.getUserMedia(config).catch(console.log)
-		}
-		return false
-	}
-
 	to(id) {
 		return this.peers.find(it => it.id === id)
-	}
-
-	sendLocalStream(peer, localStream) {
-		if (!localStream) return
-		localStream.getTracks().forEach(track => peer.pc.addTrack(track, localStream))
 	}
 
 	sendCandidate(peer, toSockedId, candidate) {
@@ -159,38 +154,26 @@ export default class RTCManager extends EventEmitter {
 		})
 	}
 
-	async addStream(stream) {
-		if (!stream) {
-			if (!this.localStream) {
-				this.localStream = await this.getUserMedia()
-			}
-			if (!this.localStream) return
-			stream = this.localStream.clone()
-			const audiotrack = stream.getAudioTracks()
-			// 自己端的streams
-			audiotrack.forEach(it => stream.removeTrack(it))
-			stream.isSelf = true
-		}
-
-		if (this.streams.some(it => it.id === stream.id)) return
-		this.streams.push(stream)
-		this.setStreams(this.streams)
-		this.peers.forEach(peer => {
-			this.sendLocalStream(peer, this.localStream)
-		})
-	}
-
 	remoteTrackHandler(e) {
-		console.log('remotetrack', e, e.streams)
-		this.addStream(e.streams[0])
-	}
+		console.log('remotetrack',e )
+		e.streams.forEach(s => {
+			s.addEventListener('removetrack', v => {
+				this.setStreams(this.streams.filter(it => v.target !== it))
+			})
+		})
 
+		this.setStreams(this.streams.concat(e.streams))
+	}
 	onStateChange({ peer, roomid }) {
 		const state = peer.pc.iceConnectionState
 		if (state === 'connected') {
 			if (roomid) {
 				return socket.emit('jion', roomid)
 			}
+			const streams = Object.values(this.localMedia)
+				.map(val => val.stream)
+				.filter(Boolean)
+			this.addStreams(streams, peer)
 		} else if (state === 'closed') {
 			this.emitLocal('peer:del', peer)
 		} else if (state === 'disconnect') {
@@ -208,96 +191,103 @@ export default class RTCManager extends EventEmitter {
 	/**
 	 *
 	 * @param {video, audio, desktopShare} config
+	 * @returns {stream}
 	 */
-	dealWithVideo(config) {
-		if (config === this.localMedia.video) return
-		for (const peer of this.peers) {
-			const stream = peer.pc.getLocalSteam()
-			
-			stream.removeTrack()
+	async getLocalMedia(type, config) {
+		if (!config) return null
+		let newStream = null
+		if (config === true) {
+			config = { [type]: true }
+		}
+		try {
+			if (type === 'desktopShare') {
+				newStream = await navigator.mediaDevices.getDisplayMedia(config)
+			} else {
+				newStream = await navigator.mediaDevices.getUserMedia(config)
+			}
+		} catch (e) {
+			console.error(e)
+			alert(`获取${type}错误`)
 		}
 
-		if (config) {
+		return newStream
+	}
+	removeTracks(tracks, peer) {
+		const set = new Map()
+		peer.pc.getSenders().forEach(sender => {
+			set.set(sender.track, sender)
+		})
+		tracks.forEach(track => {
+			if (!set.has(track)) return
 
+			peer.pc.removeTrack(set.get(track))
+		})
+	}
+	addStreams(streams, peer) {
+		const set = new Set()
+		peer.pc.getLocalStreams().forEach(stream => set.add(stream))
+		streams.forEach(stream => {
+
+			if (set.has(stream)) return
+			stream.getTracks().forEach(track => {
+				console.log('add', track, stream,peer)
+				peer.pc.addTrack(track, stream)
+			})
+			stream.oninactive = e => this.oninactive(e)
+		})
+	}
+	async setSelfMediaStatus(nwConfig) {
+		if (!nwConfig) return
+
+		let removeStreams = new Set()
+		let addStream = new Map()
+
+		for (let type of ['video', 'audio', 'desktopShare']) {
+			const { stream, config } = this.localMedia[type]
+			if (JSON.stringify(nwConfig[type]) === JSON.stringify(config)) {
+				continue
+			}
+			if (stream) {
+				removeStreams.add(stream.id)
+
+				const tracks = stream.getTracks()
+				tracks.forEach(it => it.stop())
+				this.localMedia[type].stream = null
+				this.localMedia[type].config = nwConfig[type]
+			}
+			if (nwConfig[type]) {
+				const nwStream = await this.getLocalMedia(type, nwConfig[type])
+
+				addStream.set(type, nwStream)
+			}
 		}
-	}
-	dealWithAudio(config) {
-		if (config === this.localMedia.audio) return
-	}
-	dealWithDesktopShare(config) {
-		if (config === this.localMedia.desktopShare) return
-	}
-	async setSelfMediaStatus(config) {
-		console.log(config)
-		if (!config) return
-		// deal('video', config.video).then((res) => {
-		// 	this.localMedia.video = config.video
-		// })
 
-		Promise.all([
-			this.dealWithVideo(config.video),
-			this.dealWithAudio(config.audio),
-			this.dealWithDesktopShare(config.desktopShare),
-		]).then(([video, audio, desktopShare]) => {
-			console.log(video,audio,desktopShare)
+		const pureAddStream = []
+		if (addStream.size) {
+			for (let [key, stream] of addStream) {
+				this.localMedia[key] = { config: nwConfig[key], stream }
+				stream.isSelf = true
+				pureAddStream.push(stream)
+			}
+		}
+
+		this.peers.forEach(peer => {
+			this.addStreams(pureAddStream, peer)
 		})
 
-		// if (config.desktopShare !== this.localMedia.desktopShare) {
-		// 	deal('desktopShare', config.desktopShare)
-		// }
-
-		// const videoStream = await navigator.mediaDevices.getUserMedia({
-		// 		video: true,
-		// })
-		// this.addStream()
-
-		// if (
-		// 	JSON.stringify(config.video) !==
-		// 	JSON.stringify(this.localMedia.video.config)
-		// ) {
-		// 	if (!config.video) {
-		// 		this.peers.forEach((peer) => {
-		// 			this.localMedia.video.stream.getVideoTracks().forEach((t) => {
-		// 				peer.pc.removeTrack(t)
-		// 			})
-		// 		})
-
-		// 		this.localMedia.video.stream
-		// 	} else {
-		// 	}
-		// 	if (config.video && !this._selfMediaConfig.video) {
-		// 		// navigator.mediaDevices.getUserMedia({ video: })
-		// 	}
-		// }
-
-		// const diffConfig = findDiff(this._selfMediaConfig || {}, config)
-		// this._selfMediaConfig = config
-
-		// if (diffConfig.video) {
-		// 	const videoStream = await navigator.mediaDevices.getUserMedia({
-		// 		video: diffConfig.video,
-		// 	})
-		// 	videoStream.getVideoTracks()
-		// } else if (diffConfig.video === false) {
-		// 	this.localMediaStream
-		// }
-
-		// if (diffConfig.audio) {
-		// 	const audioStream = await navigator.mediaDevices.getUserMedia({
-		// 		audio: diffConfig.audio,
-		// 	})
-		// 	audioStream.getAudioTracks().forEach((track) => {
-		// 		stream.addTrack(track)
-		// 	})
-		// }
-		// if (diffConfig.desktopShare) {
-		// 	this.localMediaStream.desktopShare = await navigator.mediaDevices
-		// }
+		this.setStreams(this.streams.filter(it => !removeStreams.has(it.id)).concat(pureAddStream))
 	}
-
-	getLocalSteam(config) {
-		if (type === 'video') {
+	// 手动关闭摄像头或者共享等
+	oninactive(e) {
+		const stream = e.target
+		for (let peer of this.peers) {
+			this.removeTracks(stream.getTracks(), peer)
 		}
+		const type = Object.keys(this.localMedia).find(type => this.localMedia[type].stream === stream)
+
+		this.localMedia[type].config = false
+		this.localMedia[type].stream = null
+		this.setStreams(this.streams.filter(it => it !== stream))
 	}
 
 	close() {
@@ -321,18 +311,17 @@ class MessageManager extends EventEmitter {
 		}
 		this.dcs.push(dc)
 	}
-	remove(dc) {
+	removeDc(dc) {
 		this.dcs = this.dcs.filter(it => it !== dc)
 		this.emitLocal('dc:del', dc)
 	}
 
 	emit(key, data, desc) {
 		const map = new Map()
-		const delFn = dc => {
-			map.delete(dc)
-		}
+		const delFn = dc => map.delete(dc)
+		console.log('se23nd', data)
 		this.on('dc:del', delFn)
-		let p
+		let p = () => {}
 		this.dcs.forEach(dc => {
 			map.set(dc, 0)
 			dc.emit(
@@ -347,13 +336,13 @@ class MessageManager extends EventEmitter {
 				if (percent === 1) {
 					this.off('dc:del', delFn)
 				}
-				p &&
-					p({
-						...e,
-						peersCount: map.size,
-						percent: allSendSize / (e.total * map.size),
-						completedCount: [...map.values()].map(it => it === e.total).length,
-					})
+
+				p({
+					...e,
+					peersCount: map.size,
+					percent: allSendSize / (e.total * map.size),
+					completedCount: [...map.values()].map(it => it === e.total).length,
+				})
 			})
 		})
 

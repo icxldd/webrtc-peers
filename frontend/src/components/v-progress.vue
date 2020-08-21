@@ -3,7 +3,7 @@
     <div class="bar">
       <div class="complete" :style="{width: percentage+'%'}"> </div>
     </div>
-    <div class="text">{{ percentage.toFixed(2) }}%</div>
+    <div class="progress-text">{{ percentage.toFixed(2) }}%</div>
   </div>
 </template>
 
@@ -15,7 +15,7 @@ export default {
 }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .v-progress {
   display: flex;
   align-items: center;
@@ -35,9 +35,10 @@ export default {
     }
   }
 
-  .text {
-    flex: 0 0 40px;
+  .progress-text {
+    flex: 0 0 auto;
     color: #606266;
+    margin-left: 8px;
   }
 }
 </style>

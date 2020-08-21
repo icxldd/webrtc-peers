@@ -6,6 +6,41 @@
   "description": "",
   "glyphs": [
     {
+      "icon_id": "448372",
+      "name": "Folder Icon",
+      "font_class": "folder",
+      "unicode": "e62b",
+      "unicode_decimal": 58923
+    },
+    {
+      "icon_id": "1315263",
+      "name": "Switch the voice",
+      "font_class": "speak",
+      "unicode": "e69c",
+      "unicode_decimal": 59036
+    },
+    {
+      "icon_id": "12097452",
+      "name": "键盘",
+      "font_class": "keyboard",
+      "unicode": "e65b",
+      "unicode_decimal": 58971
+    },
+    {
+      "icon_id": "1196849",
+      "name": "file",
+      "font_class": "file",
+      "unicode": "e625",
+      "unicode_decimal": 58917
+    },
+    {
+      "icon_id": "4318815",
+      "name": "zip",
+      "font_class": "zip",
+      "unicode": "e6c4",
+      "unicode_decimal": 59076
+    },
+    {
       "icon_id": "3844272",
       "name": "icon-桌面共享",
       "font_class": "desktopshare",

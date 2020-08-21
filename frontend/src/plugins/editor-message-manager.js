@@ -1,93 +1,83 @@
 import { fileReader } from '@/tools'
 
 export default class {
-  videos = []
-  files = [] //所有结果
-  autofiles = [] // 非video，img,的文件
-  async addImg(file, area) {
-    const dataurl = await fileReader({ data: file })
-    const img = `<img class="chat-img"  src="${dataurl}" >`
-    area.innerHTML += img
-  }
-  async addVideo(file, area) {
-    file = await fileReader({ data: file, type: 'blob' })
-    const url = URL.createObjectURL(file)
-    const hash = (Math.random() * 10 ** 17).toString()
-    let html = `<video  hash="${hash}"  controls class="chat-video" src="${url}"></video>`
-    this.videos.push({
-      hash,
-      file
+	files = new Map() //所有结果
+	async addImg(file, area) {
+    const {hash, blob,url} = await this._add(file)
+		const img = `<img class="chat-img" data-hash="${hash}" contenteditable="false" src="${url}" ><br>`
+		this.files.set(hash, {
+			hash,
+			file:blob,
+			type: 'img',
+		})
+		area.innerHTML += img
+	}
+	async _add(file) {
+		const blob = await fileReader({ data: file, type: 'blob' })
+		const url = URL.createObjectURL(file)
+		const hash = (Math.random() * 10 ** 17).toString()
+		return {
+			hash,
+			blob,
+			url,
+		}
+	}
+	async addVideo(file, area) {
+		const { hash, blob, url } = await this._add(file)
+		let html = `<video  data-hash="${hash}" contenteditable="false"  controls class="chat-video" src="${url}"></video><br>`
+		area.innerHTML += html
+		this.files.set(hash, {
+			hash,
+			file: blob,
+			type: 'video',
+		})
+	}
+
+	async addFile(file, area) {
+		const fileName = file.name
+		const hash = (Math.random() * 10 ** 17).toString()
+		let html = `<div data-hash="${hash}" class="eidtArea-file" contenteditable="false">
+			<i class="iconfont icon-file file-icon"></i>
+			<span class="file-name"> ${fileName}</span>
+		</div><br>`
+		this.files.set(hash, {
+			file,
+			hash,
+			fileName,
+      type:'file',
+		})
+		area.innerHTML += html
+	}
+
+	filter(area) {
+		const replaceHash = (Math.random() * 10 ** 17).toString()
+		function replaceWithHash(doms, hash) {
+			return [].slice.call(doms).map(it => {
+				it.replaceWith(document.createTextNode(hash))
+				return it.dataset.hash
+			})
+		}
+		const doms = area.querySelectorAll('[data-hash]')
+
+		const hashs = replaceWithHash(doms, replaceHash)
+		const files = hashs.map(it => {
+			const file = this.files.get(it)
+      return this.files.get(it)
     })
-    area.innerHTML += html
-  }
+		const texts = area.innerHTML.split(replaceHash).filter(it => it && it.replace(/(^<br>|<br>$)/g, ''))
+		setTimeout(()=> {
+			area.innerHTML = ''	
+		})
+		this.clear()
+		return {
+			texts,
+			files,
+		}
+	}
 
-  async addFile(file, area) {
-    const name = file.name
-    const hash = (Math.random() * 10 ** 17).toString()
-    console.time('111')
-    console.log(file)
-    // file = await fileReader({ data: file, type: 'blob' })
-    console.timeEnd('111')
-    let html = `<div hash="${hash}"><i class="v-icon-document file-icon"></i><span class="file-name"> ${name}</span></div>`
-    this.autofiles.push({
-      file,
-      hash,
-      name
-    })
-    area.innerHTML += html
-  }
+	clear() {
 
-  filterVideo(area) {
-    let index = 0
-    this.videos.forEach(it => {
-      const video = area.querySelector(`[hash="${it.hash}"]`)
-
-      if (!video) return
-      area.removeChild(video)
-
-      this.files.push({
-        type: 'video',
-        file: it.file,
-        hash: it.hash,
-        index: index++
-      })
-    })
-  }
-
-  filterfile(area) {
-    let index = 0
-    this.autofiles.forEach(it => {
-      const file = area.querySelector(`[hash="${it.hash}"]`)
-      if (!file) return
-      const fileName = file.querySelector('.file-name').innerHTML
-      area.removeChild(file)
-
-      this.files.push({
-        type: 'file',
-        file: it.file,
-        fileName,
-        hash: it.hash,
-        index: index++
-      })
-    })
-  }
-
-  filter(area) {
-    area = area.cloneNode(true)
-    this.filterVideo(area)
-    this.filterfile(area)
-    const text = area.innerHTML
-    const files = [...this.files]
-    this.clear()
-    return {
-      text,
-      files
-    }
-  }
-
-  clear() {
-    this.autofiles = []
-    this.files = []
-    this.videos = []
-  }
+		this.files.clear()
+	
+	}
 }

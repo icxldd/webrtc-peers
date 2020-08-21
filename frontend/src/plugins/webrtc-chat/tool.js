@@ -108,7 +108,7 @@ export const isBuffer =  function(data) {
 
 export function toBlob(data) {
   const type = getType(data)
-  if (type === 'ArrayBuffer') {
+  if (type === 'ArrayBuffer' || type === 'File') {
     return new Blob([data])
   } else if (type === 'Blob') {
     return data

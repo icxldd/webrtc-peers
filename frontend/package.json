@@ -1,23 +1,23 @@
 {
-  "name": "test",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build"
-  },
-  "dependencies": {
-    "core-js": "^2.6.5",
-    "regenerator-runtime": "^0.13.3",
-    "socket.io-client": "^2.3.0",
-    "vue": "^2.6.10",
-    "vue-router": "^3.0.3"
-  },
-  "devDependencies": {
-    "@vue/cli-plugin-babel": "^3.11.0",
-    "@vue/cli-service": "^3.11.0",
-    "node-sass": "^4.13.0",
-    "sass-loader": "^7.1.0",
-    "vue-template-compiler": "^2.6.10"
-  }
+	"name": "test",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"serve": "vue-cli-service serve",
+		"build": "vue-cli-service build"
+	},
+	"dependencies": {
+		"core-js": "^2.6.5",
+		"regenerator-runtime": "^0.13.3",
+		"socket.io-client": "^2.3.0",
+		"v-viewer": "^1.5.1",
+		"vue": "^2.6.10"
+	},
+	"devDependencies": {
+		"@vue/cli-plugin-babel": "^3.11.0",
+		"@vue/cli-service": "^3.11.0",
+		"node-sass": "^4.13.0",
+		"sass-loader": "^7.1.0",
+		"vue-template-compiler": "^2.6.10"
+	}
 }

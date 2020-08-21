@@ -50,7 +50,4 @@ export default class RTC extends EventEmitter {
   createChat() {
     return new WebRTCChat(this.pc)
   }
-  addTrack(track, stream) {
-    
-  }
 }

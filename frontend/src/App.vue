@@ -92,10 +92,12 @@ export default {
 				})
 		},
 		start(data) {
+			rtcManager.clear()
 			rtcManager.createRoom(data)
 		},
 
 		call(picked) {
+			rtcManager.clear()
 			rtcManager.call(picked)
 		},
 
@@ -305,12 +307,7 @@ video {
 			justify-content: space-between;
 			width: 100%;
 		}
-		.rtc-video {
-			background: #000;
-			margin: 5px;
-			position: relative;
-			width: 320px;
-		}
+
 	}
 
 	.rtc-room {

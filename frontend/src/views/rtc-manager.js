@@ -18,8 +18,6 @@ const iceConfig = {
 export default class RTCManager extends EventEmitter {
 	peers = []
 	streams = []
-	localStreams = []
-	remoteStreams = []
 	localMedia = {
 		video: {},
 		audio: {},
@@ -33,7 +31,13 @@ export default class RTCManager extends EventEmitter {
 		this.dcFile = new MessageManager('file')
 		this.dcData = new MessageManager('data')
 		this.on('peer:del', peer => {
-			peer.dcs && peer.dcs.forEach(dc => this.dcFile.removeDc(dc), this.dcData.removeDc(dc))
+			this.peers = this.peers.filter(it => it !== peer)
+			this.removeStreams(peer.pc.getLocalStreams())
+			peer.dcs &&
+				peer.dcs.forEach(dc => {
+					this.dcFile.removeDc(dc)
+					this.dcData.removeDc(dc)
+				})
 		})
 		// socket.on('broken', data => this.onSomeOneBroken(data))
 	}
@@ -42,28 +46,38 @@ export default class RTCManager extends EventEmitter {
 		socket.emit('create-room', data)
 		this.roomid = data.roomid
 	}
-
-	async addEventListenner(peer, toid, roomid) {
-		peer.pc.onicecandidate = e => this.sendCandidate(peer, toid, e.candidate)
-		peer.pc.addEventListener('iceconnectionstatechange', event => {
-			console.log(peer.pc.iceConnectionState)
-			this.onStateChange({ peer, roomid })
-		})
-		peer.pc.ontrack = track => this.remoteTrackHandler(track)
-
-		setTimeout(() => {
-			peer.pc.addEventListener('negotiationneeded', e => {
-				console.log('negotiationneeded', e)
-				peer.createOffer().then(offer => {
-					socket.emit('offer', {
-						from: socket.id,
-						to: toid,
-						id: peer.id,
-						offer,
-					})
-				})
+	// 连接或者重新连接
+	negotiationneeded(peer) {
+		peer.createOffer().then(offer => {
+			socket.emit('offer', {
+				from: socket.id,
+				to: peer.toSocketId,
+				id: peer.id,
+				offer,
 			})
 		})
+	}
+	async addEventListenner(peer, roomid) {
+		peer.pc.onicecandidate = e => this.sendCandidate(peer, e.candidate)
+		// peer.pc.addEventListener('iceconnectionstatechange', event => {
+		// 	console.log('iceconnectionstatechange','iceconnect', peer.pc.iceConnectionState, 'conncect', peer.pc.connectionState)
+		// 	this.onStateChange({ peer, roomid })
+		// })
+		peer.pc.onconnectionstatechange = e => {
+			this.onStateChange({ peer, roomid })
+			console.log(
+				'onconnectionstatechange',
+				'iceconnect',
+				peer.pc.iceConnectionState,
+				'conncect',
+				peer.pc.connectionState
+			)
+		}
+		peer.pc.ontrack = track => this.remoteTrackHandler(track)
+		// peer.pc.addEventListener('negotiationneeded', e => {
+		// 		console.log('negotiationneeded', e)
+
+		// })
 	}
 	createPeer({ toSocketId, id, roomid }) {
 		const peer = new RTC({ config: iceConfig })
@@ -78,7 +92,7 @@ export default class RTCManager extends EventEmitter {
 		]
 		this.dcData.add(peer.dcs[0])
 		this.dcFile.add(peer.dcs[1])
-		this.addEventListenner(peer, toSocketId, roomid)
+		this.addEventListenner(peer, roomid)
 
 		return peer
 	}
@@ -108,17 +122,14 @@ export default class RTCManager extends EventEmitter {
 			toSocketId: toid,
 			roomid,
 		})
-		if(!peer) {
-			debugger
+		if (!peer) {
 			alert('per为空')
 		}
 		this.peers.push(peer)
 		window.peer = peer
 		this.emitLocal('peers:add', peer, this.peers)
 		this.emitLocal('peers:change', this.peers)
-		peer.createOffer().then(offer => {
-			socket.emit('offer', { from: socket.id, to: toid, id: peer.id, offer })
-		})
+		this.negotiationneeded(peer)
 	}
 
 	async call(picked) {
@@ -145,19 +156,20 @@ export default class RTCManager extends EventEmitter {
 		return this.peers.find(it => it.id === id)
 	}
 
-	sendCandidate(peer, toSockedId, candidate) {
+	sendCandidate(peer, candidate) {
 		socket.emit('candidate', {
 			candidate,
-			to: toSockedId,
+			to: peer.toSocketId,
 			from: socket.id,
 			id: peer.id,
 		})
 	}
 
 	remoteTrackHandler(e) {
-		console.log('remotetrack',e )
+		console.log('remotetrack', e)
 		e.streams.forEach(s => {
 			s.addEventListener('removetrack', v => {
+				console.log('removeTrack', v)
 				this.setStreams(this.streams.filter(it => v.target !== it))
 			})
 		})
@@ -174,14 +186,11 @@ export default class RTCManager extends EventEmitter {
 				.map(val => val.stream)
 				.filter(Boolean)
 			this.addStreams(streams, peer)
-		} else if (state === 'closed') {
+		} else if (
+			(state === 'disconnected' && peer.pc.connectionState === 'failed') ||
+			state === 'closed'
+		) {
 			this.emitLocal('peer:del', peer)
-		} else if (state === 'disconnect') {
-			setTimeout(() => {
-				if (peer.pc.iceConnectionState === 'disconnect') {
-					this.emitLocal('peer:del', peer)
-				}
-			}, 10 * 1000)
 		}
 	}
 	setStreams(streams) {
@@ -223,18 +232,26 @@ export default class RTCManager extends EventEmitter {
 			peer.pc.removeTrack(set.get(track))
 		})
 	}
+	removeStreams(streams) {
+		const set = new Set(streams)
+		this.setStreams(this.streams.filter(it => !set.has(it)))
+	}
 	addStreams(streams, peer) {
 		const set = new Set()
 		peer.pc.getLocalStreams().forEach(stream => set.add(stream))
+		let isAdd = false
 		streams.forEach(stream => {
-
 			if (set.has(stream)) return
+			isAdd = true
 			stream.getTracks().forEach(track => {
-				console.log('add', track, stream,peer)
+				console.log('add', track, stream, peer)
 				peer.pc.addTrack(track, stream)
 			})
 			stream.oninactive = e => this.oninactive(e)
 		})
+		if (isAdd) {
+			this.negotiationneeded(peer)
+		}
 	}
 	async setSelfMediaStatus(nwConfig) {
 		if (!nwConfig) return
@@ -252,8 +269,6 @@ export default class RTCManager extends EventEmitter {
 
 				const tracks = stream.getTracks()
 				tracks.forEach(it => it.stop())
-				this.localMedia[type].stream = null
-				this.localMedia[type].config = nwConfig[type]
 			}
 			if (nwConfig[type]) {
 				const nwStream = await this.getLocalMedia(type, nwConfig[type])
@@ -282,6 +297,7 @@ export default class RTCManager extends EventEmitter {
 		const stream = e.target
 		for (let peer of this.peers) {
 			this.removeTracks(stream.getTracks(), peer)
+			this.negotiationneeded(peer)
 		}
 		const type = Object.keys(this.localMedia).find(type => this.localMedia[type].stream === stream)
 
@@ -294,6 +310,14 @@ export default class RTCManager extends EventEmitter {
 		socket.off('candidatae')
 		socket.off('answer')
 		socket.off('offer')
+	}
+	clear() {
+		this.peers.forEach(peer => {
+			peer.pc.close()
+		})
+
+		this.peers = []
+		this.setStreams([])
 	}
 }
 
